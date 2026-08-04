@@ -7,7 +7,7 @@
         public String RoomNumber { get; set; } = String.Empty;
 
         public IEnumerable<Student> Students { get; set; } = new List<Student>();
-        public IEnumerable<Subject> Subjects { get; set; } = new List<Subject>();
+        public IEnumerable<Assignment> Assignments { get; set; } = new List<Assignment>();
 
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime? UpdatedDate { get; set; }
