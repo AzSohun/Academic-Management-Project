@@ -1,4 +1,6 @@
 using AcademicManagementSystem.Data;
+using AcademicManagementSystem.Interfaces;
+using AcademicManagementSystem.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -15,6 +17,8 @@ builder.Services.AddDbContext<AppDbContext>(option =>
     option.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
+
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
 

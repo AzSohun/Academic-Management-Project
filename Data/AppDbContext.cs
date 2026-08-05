@@ -40,7 +40,7 @@ namespace AcademicManagementSystem.Data
                 .HasOne(a => a.Teacher)
                 .WithMany(t => t.Assignments)
                 .HasForeignKey(a => a.TeacherId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Assignment>()
                 .HasOne(a => a.Subject)

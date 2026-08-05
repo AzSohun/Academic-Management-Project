@@ -1,25 +1,16 @@
-﻿namespace AcademicManagementSystem.Models
+﻿namespace AcademicManagementSystem.DTOs.AuthDtos
 {
-    public class User
+    public class SignUpDto
     {
 
-        public Guid Id { get; set; } = Guid.NewGuid();
         public String FirstName { get; set; } = String.Empty;
         public String LastName { get; set; } = String.Empty;
         public String Email { get; set; } = String.Empty;
         public String Password { get; set; } = String.Empty;
-        public  Role? Role { get; set; }
+        public Role? Role { get; set; }
         public Gender? Gender { get; set; }
 
-
-        public string RefreshToken { get; set; } = string.Empty;
-        public DateTime? RefreshTokenExpiryTime { get; set; }
-
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
-        
     }
-
-
 
     public enum Role
     {
