@@ -5,8 +5,9 @@ namespace AcademicManagementSystem.Interfaces
     public interface IAuthService
     {
 
-        Task<string> LoginAsync(LoginDto loginDto);
+        Task<AuthResponseDto> LoginAsync(LoginDto loginDto);
         Task<string> SignUpAsync(SignUpDto signUpDto);
+        Task<AuthResponseDto> RefreshTokenAsync(string RefreshToken);
 
     }
 }
