@@ -9,7 +9,7 @@
 
         public IEnumerable<Assignment> Assignments { get; set; } = new List<Assignment>();
 
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedDate { get; set; }
 
     }

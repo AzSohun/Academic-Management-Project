@@ -20,7 +20,7 @@
 
         public IEnumerable<Submission> Submissions { get; set; } = new List<Submission>();
 
-        public DateTime CreatedDate { get; set; }= DateTime.Now;
+        public DateTime CreatedDate { get; set; }= DateTime.UtcNow;
         public DateTime? UpdatedDate { get; set; }
     }
 }

@@ -16,7 +16,7 @@
         public Guid StudentId { get; set; }
         public Student? Student { get; set; }
 
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedDate { get; set; }
 
     }
