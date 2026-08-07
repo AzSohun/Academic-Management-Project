@@ -7,7 +7,7 @@
         public String SubjectDescription { get; set; } = String.Empty;
         public String SubjectCode { get; set; } = String.Empty;
 
-        public IEnumerable<Assignment> Assignments { get; set; } = new List<Assignment>();
+        public ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
 
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedDate { get; set; }

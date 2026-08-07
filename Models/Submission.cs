@@ -4,7 +4,7 @@
     {
         public Guid Id { get; set; } = Guid.NewGuid();
         public String FilePath { get; set; } = String.Empty;
-        public DateTime SubmissionDate { get; set; } = DateTime.Now;
+        public DateTime SubmissionDate { get; set; } = DateTime.UtcNow;
 
         public int? MarkAssigned { get; set;  }
         public string TeacherFeedback { get; set; } = string.Empty;

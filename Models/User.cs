@@ -12,7 +12,7 @@
         public Gender? Gender { get; set; }
 
 
-        public string RefreshToken { get; set; } = string.Empty;
+        public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryTime { get; set; }
 
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

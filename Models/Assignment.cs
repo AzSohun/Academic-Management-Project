@@ -7,6 +7,7 @@
         public string Description { get; set; } = String.Empty;
         public int? Marks { get; set; }
         public DateOnly DueDate { get; set; }
+        public bool IsDraft { get; set; } = true;
 
 
         public Guid SubjectId { get; set; }
@@ -18,7 +19,7 @@
         public Guid ClassDetailsId { get; set; }
         public ClassDetails? ClassDetails { get; set; }
 
-        public IEnumerable<Submission> Submissions { get; set; } = new List<Submission>();
+        public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
 
         public DateTime CreatedDate { get; set; }= DateTime.UtcNow;
         public DateTime? UpdatedDate { get; set; }

@@ -6,8 +6,8 @@
         public String ClassName { get; set; } = String.Empty;
         public String RoomNumber { get; set; } = String.Empty;
 
-        public IEnumerable<Student> Students { get; set; } = new List<Student>();
-        public IEnumerable<Assignment> Assignments { get; set; } = new List<Assignment>();
+        public ICollection<Student> Students { get; set; } = new List<Student>();
+        public ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
 
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedDate { get; set; }
