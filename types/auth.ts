@@ -1,7 +1,7 @@
 export type Role = 'Admin' | 'Teacher' | 'Student';
 export type Gender = 'Male' | 'Female';
 
-export interface User {
+export interface UserDto {
     id: string,
     firstName: string,
     lastName: string,
