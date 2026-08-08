@@ -1,3 +1,5 @@
+'use client';
+
 import { api, setAccessToken } from "@/lib/api";
 import { LoginDto, SignUpDto, UserDto } from "@/types/auth";
 import { useRouter } from "next/navigation";
@@ -41,6 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const accessToken = res.data.accessToken;
                 setToken(accessToken);
                 setAccessToken(accessToken);
+                setUser(res.data.user)
             } catch (error) {
                 setToken(null);
                 setAccessToken(null);
@@ -60,6 +63,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const accessToken = res.data.accessToken;
         setToken(accessToken);
         setAccessToken(accessToken);
+
+        setUser(user);
 
         router.push("/dashboard");
     }
