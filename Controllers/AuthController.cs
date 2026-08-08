@@ -113,7 +113,8 @@ namespace AcademicManagementSystem.Controllers
                 HttpOnly = true,
                 Expires = DateTime.UtcNow.AddDays(7),
                 Secure = true,
-                SameSite = SameSiteMode.Strict
+                SameSite = SameSiteMode.None,
+                Path = "/"
             };
             Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
         }
