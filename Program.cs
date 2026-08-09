@@ -18,6 +18,8 @@ builder.Services.AddDbContext<AppDbContext>(option =>
 
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<ITeacherService, TeacherService>();
 
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");

@@ -27,9 +27,9 @@ namespace AcademicManagementSystem.Services
         {
 
             var isClassExist = await _context.ClassDetails.FirstOrDefaultAsync(c => 
-            c.ClassName == dto.ClassName || c.RoomNumber == dto.RoomNumber);
+            c.ClassName == dto.ClassName && c.RoomNumber == dto.RoomNumber);
 
-            if (isClassExist == null) 
+            if (isClassExist != null) 
             {
                 throw new Exception("Class with the same name or room number already exists.");
             }
@@ -51,9 +51,9 @@ namespace AcademicManagementSystem.Services
         {
 
             var isSubjectExist = await _context.Subjects.FirstOrDefaultAsync(s =>
-            s.SubjectName == dto.SubjectName || s.SubjectCode == dto.SubjectCode);
+            s.SubjectName == dto.SubjectName && s.SubjectCode == dto.SubjectCode);
 
-            if (isSubjectExist == null)
+            if (isSubjectExist != null)
             {
                 throw new Exception("Subject with the same name or code already exists.");
             }
