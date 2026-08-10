@@ -15,6 +15,9 @@
         public Guid UserId { get; set; }
         public User? User { get; set; }
 
+        public Guid? ClassDetailsId { get; set; }
+        public ClassDetails? ClassDetails { get; set; }
+
         public ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
 
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

@@ -23,7 +23,15 @@ namespace AcademicManagementSystem.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
 
+            modelBuilder.Entity<Subject>()
+                .HasIndex(s => s.SubjectCode)
+                .IsUnique();
+
+            // --- User Relationships ---
             modelBuilder.Entity<Student>()
                 .HasOne(s => s.User)
                 .WithOne()
@@ -36,6 +44,19 @@ namespace AcademicManagementSystem.Data
                 .HasForeignKey<Teacher>(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Student>()
+                .HasOne<ClassDetails>()
+                .WithMany()
+                .HasForeignKey(s => s.ClassDetailsId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Teacher>()
+                .HasOne(t => t.ClassDetails)
+                .WithMany()
+                .HasForeignKey(t => t.ClassDetailsId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // --- Assignment Relationships ---
             modelBuilder.Entity<Assignment>()
                 .HasOne(a => a.Teacher)
                 .WithMany(t => t.Assignments)
@@ -54,6 +75,7 @@ namespace AcademicManagementSystem.Data
                 .HasForeignKey(a => a.ClassDetailsId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // --- Submission Relationships ---
             modelBuilder.Entity<Submission>()
                 .HasOne(s => s.Student)
                 .WithMany(st => st.Submissions)
@@ -65,7 +87,6 @@ namespace AcademicManagementSystem.Data
                 .WithMany(a => a.Submissions)
                 .HasForeignKey(s => s.AssignmentId)
                 .OnDelete(DeleteBehavior.Cascade);
-
         }
     }
 }

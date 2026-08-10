@@ -23,6 +23,46 @@ namespace AcademicManagementSystem.Services
             return await _context.Users.ToListAsync();
         }
 
+
+        public async Task<IEnumerable<object>> GetClassesAsync()
+        {
+            return await _context.ClassDetails
+                .Select(c => new
+                {
+                    c.Id,
+                    c.ClassName,
+                    c.RoomNumber
+                })
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<object>> GetStudentsAsync()
+        {
+            return await _context.Students
+                .Include(s => s.User)
+                .Select(s => new
+                {
+                    s.Id, 
+                    FullName = s.User != null ? $"{s.User.FirstName} {s.User.LastName}" : "Unknown Student",
+                    Email = s.User != null ? s.User.Email : string.Empty
+                })
+                .ToListAsync();
+        }
+
+
+        public async Task<IEnumerable<object>> GetTeachersAsync()
+        {
+            return await _context.Teachers
+                .Include(t => t.User)
+                .Select(t => new
+                {
+                    t.Id,
+                    FullName = t.User != null ? $"{t.User.FirstName} {t.User.LastName}" : "Unknown Teacher",
+                    Specialization = t.Specialization ?? "Teacher"
+                })
+                .ToListAsync();
+        }
+
         public async Task<ClassDetails> CreateClassAsync(CreateClassDto dto)
         {
 
@@ -45,6 +85,29 @@ namespace AcademicManagementSystem.Services
 
             return newClass;
 
+        }
+
+
+        public async Task<ClassDetails?> UpdateClassAsync(Guid id, CreateClassDto dto)
+        {
+            var existingClass = await _context.ClassDetails.FindAsync(id);
+            if (existingClass == null) return null;
+
+            existingClass.ClassName = dto.ClassName;
+            existingClass.RoomNumber = dto.RoomNumber;
+
+            await _context.SaveChangesAsync();
+            return existingClass;
+        }
+
+        public async Task<bool> DeleteClassAsync(Guid id)
+        {
+            var existingClass = await _context.ClassDetails.FindAsync(id);
+            if (existingClass == null) return false;
+
+            _context.ClassDetails.Remove(existingClass);
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<Subject> CreateSubjectAsync(CreateSubjectDto dto)
@@ -83,8 +146,26 @@ namespace AcademicManagementSystem.Services
                 return false;
             }
 
+            var classDetails = await _context.ClassDetails.FindAsync(classId);
+            if (classDetails == null) return false;
+
             student.ClassDetailsId = classId;
 
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+
+        public async Task<bool> AssignTeacherToClassAsync(Guid teacherId, Guid classDetailsId)
+        {
+            var teacher = await _context.Teachers.FindAsync(teacherId);
+            if (teacher == null) return false;
+
+            var classDetails = await _context.ClassDetails.FindAsync(classDetailsId);
+            if (classDetails == null) return false;
+
+            teacher.ClassDetailsId = classDetailsId;
             await _context.SaveChangesAsync();
 
             return true;

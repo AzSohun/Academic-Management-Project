@@ -3,6 +3,7 @@ using AcademicManagementSystem.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace AcademicManagementSystem.Controllers
 {
@@ -24,6 +25,18 @@ namespace AcademicManagementSystem.Controllers
         [HttpGet("users")]
         public async Task<IActionResult> GetAllUsers() => Ok(await _adminService.GetAllUsersAsync());
 
+        [HttpGet("classes")]
+        public async Task<IActionResult> GetClasses()
+            => Ok(await _adminService.GetClassesAsync());
+
+        [HttpGet("students")]
+        public async Task<IActionResult> GetStudents()
+            => Ok(await _adminService.GetStudentsAsync());
+
+        [HttpGet("teachers")]
+        public async Task<IActionResult> GetTeachers()
+            => Ok(await _adminService.GetTeachersAsync());
+
 
         [HttpPost("classes")]
         public async Task<IActionResult> CreateClass([FromBody] CreateClassDto dto)
@@ -36,6 +49,23 @@ namespace AcademicManagementSystem.Controllers
             }
 
             return Ok(res);
+        }
+
+
+        [HttpPut("classes/{id}")]
+        public async Task<IActionResult> UpdateClass(Guid id, [FromBody] CreateClassDto dto)
+        {
+            var res = await _adminService.UpdateClassAsync(id, dto);
+            if (res == null) return NotFound("Class Not Found!");
+            return Ok(res);
+        }
+
+        [HttpDelete("classes/{id}")]
+        public async Task<IActionResult> DeleteClass(Guid id)
+        {
+            var res = await _adminService.DeleteClassAsync(id);
+            if (!res) return NotFound("Class Not Found!");
+            return Ok(new { message = "Class deleted successfully" });
         }
 
 
@@ -69,6 +99,16 @@ namespace AcademicManagementSystem.Controllers
             return Ok(res);
 
         }
+
+
+        [HttpPost("assign-teacher-class")]
+        public async Task<IActionResult> AssignTeacher([FromBody] AssignTeacherDto dto)
+        {
+            var res = await _adminService.AssignTeacherToClassAsync(dto.TeacherId, dto.ClassDetailsId);
+            if (!res) return BadRequest("Unable to assign teacher to the class");
+            return Ok(res);
+        }
+
 
         [HttpGet("assignments")]
         public async Task<IActionResult> GetAllAssignments()=> Ok(await _adminService.GetAllAssignmentsAsync());
