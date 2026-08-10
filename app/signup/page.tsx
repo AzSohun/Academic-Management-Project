@@ -42,7 +42,7 @@ export default function SignUpPage() {
                 return;
             }
 
-            alert('Registration Successful! Please Login.');
+            // alert('Registration Successful! Please Login.');
             router.push('/login');
         } catch (err: any) {
             setError(err.response?.data?.message || 'Registration failed. Please try again.');

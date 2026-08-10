@@ -14,6 +14,17 @@ interface User {
     gender?: number | string;
 }
 
+// 🟢 Server-Side Query Result DTO
+interface QueryResultDto<T> {
+    items: T[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+}
+
 interface StudentOption {
     id: string;
     fullName: string;
@@ -87,7 +98,25 @@ export default function AdminView() {
     const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'assignments'>('overview');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-    const [users, setUsers] = useState<User[]>([]);
+    // 🟢 Server-Side Paginated Users State
+    const [usersResult, setUsersResult] = useState<QueryResultDto<User>>({
+        items: [],
+        totalCount: 0,
+        pageNumber: 1,
+        pageSize: 10,
+        totalPages: 0,
+        hasPreviousPage: false,
+        hasNextPage: false,
+    });
+
+    // 🟢 Server-Side Query Parameters State
+    const [userSearch, setUserSearch] = useState('');
+    const [roleFilter, setRoleFilter] = useState<string>('all'); // 'all' | '0' | '1' | '2'
+    const [pageNumber, setPageNumber] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [loadingUsers, setLoadingUsers] = useState(false);
+
+    // Other Core States
     const [studentsList, setStudentsList] = useState<StudentOption[]>([]);
     const [teachersList, setTeachersList] = useState<TeacherOption[]>([]);
     const [classList, setClassList] = useState<ClassOption[]>([]);
@@ -98,13 +127,9 @@ export default function AdminView() {
     const [loading, setLoading] = useState<boolean>(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    const [userSearch, setUserSearch] = useState('');
-    const [roleFilter, setRoleFilter] = useState<string>('all');
-
     const [className, setClassName] = useState('');
     const [roomNumber, setRoomNumber] = useState('');
 
-    // --- Edit Class State ---
     const [editingClass, setEditingClass] = useState<ClassOption | null>(null);
     const [editClassName, setEditClassName] = useState('');
     const [editRoomNumber, setEditRoomNumber] = useState('');
@@ -119,15 +144,22 @@ export default function AdminView() {
     const [selectedTeacherId, setSelectedTeacherId] = useState('');
     const [selectedTeacherClassId, setSelectedTeacherClassId] = useState('');
 
+    // Fetch Dashboard Initial Data
     useEffect(() => {
         fetchDashboardData();
     }, []);
 
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchPaginatedUsers();
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [userSearch, roleFilter, pageNumber, pageSize]);
+
     const fetchDashboardData = async () => {
         setLoading(true);
         try {
-            const [usersRes, studentsRes, teachersRes, classesRes, subjectsRes, assignmentsRes, submissionsRes] = await Promise.allSettled([
-                api.get('/admin/users'),
+            const [studentsRes, teachersRes, classesRes, subjectsRes, assignmentsRes, submissionsRes] = await Promise.allSettled([
                 api.get('/admin/students'),
                 api.get('/admin/teachers'),
                 api.get('/admin/classes'),
@@ -136,17 +168,48 @@ export default function AdminView() {
                 api.get('/admin/submissions'),
             ]);
 
-            if (usersRes.status === 'fulfilled') setUsers(extractArrayData(usersRes.value));
             if (studentsRes.status === 'fulfilled') setStudentsList(extractArrayData(studentsRes.value));
             if (teachersRes.status === 'fulfilled') setTeachersList(extractArrayData(teachersRes.value));
             if (classesRes.status === 'fulfilled') setClassList(extractArrayData(classesRes.value));
             if (subjectsRes.status === 'fulfilled') setSubjectList(extractArrayData(subjectsRes.value));
             if (assignmentsRes.status === 'fulfilled') setAssignments(extractArrayData(assignmentsRes.value));
             if (submissionsRes.status === 'fulfilled') setSubmissions(extractArrayData(submissionsRes.value));
+
+            await fetchPaginatedUsers();
         } catch {
             showStatus('error', 'Failed to load system data');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchPaginatedUsers = async () => {
+        setLoadingUsers(true);
+        try {
+            const params: Record<string, any> = {
+                pageNumber,
+                pageSize,
+            };
+
+            if (userSearch.trim()) params.search = userSearch.trim();
+            if (roleFilter !== 'all') params.role = Number(roleFilter);
+
+            const res = await api.get('/admin/users', { params });
+            const data = res.data;
+
+            setUsersResult({
+                items: data.items || data.$values?.items || [],
+                totalCount: data.totalCount ?? 0,
+                pageNumber: data.pageNumber ?? 1,
+                pageSize: data.pageSize ?? 10,
+                totalPages: data.totalPages ?? 0,
+                hasPreviousPage: data.hasPreviousPage ?? false,
+                hasNextPage: data.hasNextPage ?? false,
+            });
+        } catch {
+            showStatus('error', 'Failed to load paginated users');
+        } finally {
+            setLoadingUsers(false);
         }
     };
 
@@ -155,39 +218,17 @@ export default function AdminView() {
         setTimeout(() => setStatusMsg(null), 4000);
     };
 
-    const effectiveTeachers = useMemo(() => {
-        if (teachersList.length > 0) return teachersList;
-        return users
-            .filter((u) => getRoleName(u.role).toLowerCase() === 'teacher')
-            .map((u) => ({
-                id: u.id,
-                fullName: `${u.firstName} ${u.lastName}`.trim(),
-                specialization: 'Teacher',
-            }));
-    }, [teachersList, users]);
+    // Handle Search input change (reset to page 1)
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setUserSearch(e.target.value);
+        setPageNumber(1);
+    };
 
-    const effectiveStudents = useMemo(() => {
-        if (studentsList.length > 0) return studentsList;
-        return users
-            .filter((u) => getRoleName(u.role).toLowerCase() === 'student')
-            .map((u) => ({
-                id: u.id,
-                fullName: `${u.firstName} ${u.lastName}`.trim(),
-                email: u.email,
-            }));
-    }, [studentsList, users]);
-
-    const filteredUsers = useMemo(() => {
-        return users.filter((u) => {
-            const matchesSearch =
-                `${u.firstName} ${u.lastName}`.toLowerCase().includes(userSearch.toLowerCase()) ||
-                u.email.toLowerCase().includes(userSearch.toLowerCase());
-            const roleName = getRoleName(u.role).toLowerCase();
-            const matchesRole = roleFilter === 'all' || roleName === roleFilter.toLowerCase();
-
-            return matchesSearch && matchesRole;
-        });
-    }, [users, userSearch, roleFilter]);
+    // Handle Role filter change (reset to page 1)
+    const handleRoleFilterChange = (role: string) => {
+        setRoleFilter(role);
+        setPageNumber(1);
+    };
 
     const handleCreateClass = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -224,7 +265,6 @@ export default function AdminView() {
         }
     };
 
-    // --- SweetAlert2 Delete Handler ---
     const handleDeleteClass = async (classItem: ClassOption) => {
         const result = await Swal.fire({
             title: 'Are you sure?',
@@ -233,10 +273,10 @@ export default function AdminView() {
             showCancelButton: true,
             confirmButtonText: 'Yes, Delete',
             cancelButtonText: 'Cancel',
-            background: '#0f172a', // Slate 900
-            color: '#f8fafc', // Slate 50
-            confirmButtonColor: '#e11d48', // Rose 600
-            cancelButtonColor: '#334155', // Slate 700
+            background: '#0f172a',
+            color: '#f8fafc',
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#334155',
             customClass: {
                 popup: 'border border-slate-800 rounded-xl shadow-2xl',
                 title: 'text-sm font-bold text-white',
@@ -288,7 +328,7 @@ export default function AdminView() {
             return;
         }
         try {
-            await api.post(`/admin/assign-student-class?studentId=${selectedStudentId}&classId=${selectedStudentClassId}`);
+            await api.post(`/admin/assign-student-to-class?studentId=${selectedStudentId}&classId=${selectedStudentClassId}`);
             showStatus('success', 'Student successfully assigned to class!');
             setSelectedStudentId('');
             setSelectedStudentClassId('');
@@ -329,7 +369,7 @@ export default function AdminView() {
         {
             id: 'users',
             label: 'Users & Roles',
-            count: users.length,
+            count: usersResult.totalCount,
             icon: (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -450,8 +490,8 @@ export default function AdminView() {
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-                                    <p className="text-[11px] font-medium text-slate-400">Total Users</p>
-                                    <h3 className="text-2xl font-bold text-white mt-1">{users.length}</h3>
+                                    <p className="text-[11px] font-medium text-slate-400">Total System Users</p>
+                                    <h3 className="text-2xl font-bold text-white mt-1">{usersResult.totalCount}</h3>
                                     <span className="text-[10px] text-slate-500 block mt-2">Admins, Teachers, Students</span>
                                 </div>
 
@@ -509,7 +549,7 @@ export default function AdminView() {
                                             required
                                         >
                                             <option value="">Select Student...</option>
-                                            {effectiveStudents.map((st) => (
+                                            {studentsList.map((st) => (
                                                 <option key={st.id} value={st.id}>
                                                     {st.fullName} ({st.email})
                                                 </option>
@@ -547,7 +587,7 @@ export default function AdminView() {
                                             required
                                         >
                                             <option value="">Select Teacher...</option>
-                                            {effectiveTeachers.map((t) => (
+                                            {teachersList.map((t) => (
                                                 <option key={t.id} value={t.id}>
                                                     {t.fullName} ({t.specialization || 'Teacher'})
                                                 </option>
@@ -575,33 +615,47 @@ export default function AdminView() {
                                 </div>
                             </div>
 
-                            {/* User Filtering Table */}
+                            {/* Server-Side Paginated Users Table Panel */}
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 space-y-4">
                                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Search by name or email..."
-                                        value={userSearch}
-                                        onChange={(e) => setUserSearch(e.target.value)}
-                                        className="w-full sm:w-72 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-slate-700"
-                                    />
+                                    <div className="relative w-full sm:w-72">
+                                        <input
+                                            type="text"
+                                            placeholder="Search by name or email..."
+                                            value={userSearch}
+                                            onChange={handleSearchChange}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                        />
+                                        {loadingUsers && (
+                                            <span className="absolute right-2.5 top-2 text-[10px] text-indigo-400 animate-pulse">
+                                                Searching...
+                                            </span>
+                                        )}
+                                    </div>
 
+                                    {/* Role Filters */}
                                     <div className="flex gap-1">
-                                        {['all', 'admin', 'teacher', 'student'].map((r) => (
+                                        {[
+                                            { label: 'All', value: 'all' },
+                                            { label: 'Admin', value: '0' },
+                                            { label: 'Teacher', value: '1' },
+                                            { label: 'Student', value: '2' },
+                                        ].map((r) => (
                                             <button
-                                                key={r}
-                                                onClick={() => setRoleFilter(r)}
-                                                className={`px-3 py-1 rounded-md text-xs font-medium capitalize border transition cursor-pointer ${roleFilter === r
+                                                key={r.value}
+                                                onClick={() => handleRoleFilterChange(r.value)}
+                                                className={`px-3 py-1 rounded-md text-xs font-medium border transition cursor-pointer ${roleFilter === r.value
                                                     ? 'bg-indigo-600 text-white border-indigo-500'
                                                     : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
                                                     }`}
                                             >
-                                                {r}
+                                                {r.label}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
+                                {/* Table Body */}
                                 <div className="overflow-x-auto rounded-lg border border-slate-800">
                                     <table className="w-full text-left text-xs text-slate-300">
                                         <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
@@ -613,7 +667,7 @@ export default function AdminView() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
-                                            {filteredUsers.map((u) => (
+                                            {usersResult.items.map((u) => (
                                                 <tr key={u.id} className="hover:bg-slate-800/30 transition">
                                                     <td className="p-3 font-medium text-slate-200">
                                                         {u.firstName} {u.lastName}
@@ -627,15 +681,74 @@ export default function AdminView() {
                                                     </td>
                                                 </tr>
                                             ))}
-                                            {filteredUsers.length === 0 && (
+                                            {usersResult.items.length === 0 && (
                                                 <tr>
-                                                    <td colSpan={4} className="p-4 text-center text-slate-500">
-                                                        No users match your filter criteria.
+                                                    <td colSpan={4} className="p-6 text-center text-slate-500">
+                                                        {loadingUsers ? 'Loading server results...' : 'No users match your filter criteria.'}
                                                     </td>
                                                 </tr>
                                             )}
                                         </tbody>
                                     </table>
+
+
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 bg-slate-950 border-t border-slate-800 text-xs text-slate-400">
+                                        <div>
+                                            {usersResult.totalCount === 0 ? (
+                                                <span>Showing <span className="text-slate-200 font-semibold">0</span> users</span>
+                                            ) : (
+                                                <span>
+                                                    Showing{' '}
+                                                    <span className="text-slate-200 font-semibold">
+                                                        {(usersResult.pageNumber - 1) * usersResult.pageSize + 1}
+                                                    </span>{' '}
+                                                    to{' '}
+                                                    <span className="text-slate-200 font-semibold">
+                                                        {Math.min(usersResult.pageNumber * usersResult.pageSize, usersResult.totalCount)}
+                                                    </span>{' '}
+                                                    of <span className="text-slate-200 font-semibold">{usersResult.totalCount}</span> users
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <select
+                                                value={pageSize}
+                                                onChange={(e) => {
+                                                    setPageSize(Number(e.target.value));
+                                                    setPageNumber(1);
+                                                }}
+                                                className="bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                                            >
+                                                <option value={10}>10 / page</option>
+                                                <option value={15}>15 / page</option>
+                                                <option value={20}>20 / page</option>
+                                            </select>
+
+                                            {/* Prev / Next Buttons */}
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    disabled={!usersResult.hasPreviousPage || loadingUsers}
+                                                    onClick={() => setPageNumber((prev) => Math.max(prev - 1, 1))}
+                                                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                                                >
+                                                    Previous
+                                                </button>
+
+                                                <span className="px-2 font-medium text-slate-300">
+                                                    {usersResult.pageNumber} / {usersResult.totalPages || 1}
+                                                </span>
+
+                                                <button
+                                                    disabled={!usersResult.hasNextPage || loadingUsers}
+                                                    onClick={() => setPageNumber((prev) => prev + 1)}
+                                                    className="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                                                >
+                                                    Next
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -721,31 +834,56 @@ export default function AdminView() {
                             </div>
 
                             {/* Class Cards list with Edit and Delete */}
-                            <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
-                                <h3 className="text-xs font-semibold text-slate-200">Active Classes ({classList.length})</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    {classList.map((c) => (
-                                        <div key={c.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-lg flex justify-between items-center">
-                                            <div>
-                                                <h4 className="font-semibold text-xs text-slate-200">{c.className}</h4>
-                                                <p className="text-[10px] text-slate-400 mt-0.5">Room: {c.roomNumber}</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
+                                    <h3 className="text-xs font-semibold text-slate-200">Active Classes ({classList.length})</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {classList.map((c) => (
+                                            <div key={c.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-lg flex justify-between items-center">
+                                                <div>
+                                                    <h4 className="font-semibold text-xs text-slate-200">{c.className}</h4>
+                                                    <p className="text-[10px] text-slate-400 mt-0.5">Room: {c.roomNumber}</p>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={() => handleOpenEditClass(c)}
+                                                        className="px-2 py-1 bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900 text-[10px] font-medium rounded border border-indigo-800/80 transition cursor-pointer"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteClass(c)}
+                                                        className="px-2 py-1 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-[10px] font-medium rounded border border-rose-800/80 transition cursor-pointer"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-1.5">
-                                                <button
-                                                    onClick={() => handleOpenEditClass(c)}
-                                                    className="px-2 py-1 bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900 text-[10px] font-medium rounded border border-indigo-800/80 transition cursor-pointer"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteClass(c)}
-                                                    className="px-2 py-1 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-[10px] font-medium rounded border border-rose-800/80 transition cursor-pointer"
-                                                >
-                                                    Delete
-                                                </button>
+                                        ))}
+                                        {classList.length === 0 && (
+                                            <p className="text-xs text-slate-500 col-span-full">No active classes created yet.</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
+                                    <h3 className="text-xs font-semibold text-slate-200">Created Subjects ({subjectList.length})</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {subjectList.map((s) => (
+                                            <div key={s.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-lg flex justify-between items-center">
+                                                <div>
+                                                    <h4 className="font-semibold text-xs text-emerald-300">{s.subjectName}</h4>
+                                                    <p className="text-[10px] text-slate-400 mt-0.5">Code: <span className="text-slate-200 font-mono">{s.subjectCode}</span></p>
+                                                </div>
+                                                <span className="px-2 py-0.5 rounded text-[9px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800/80">
+                                                    Active
+                                                </span>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                        {subjectList.length === 0 && (
+                                            <p className="text-xs text-slate-500 col-span-full">No subjects created yet.</p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
