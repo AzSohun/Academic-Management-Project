@@ -1,6 +1,7 @@
 ﻿using AcademicManagementSystem.Data;
 using AcademicManagementSystem.DTOs;
 using AcademicManagementSystem.DTOs.AssignmentDtos;
+using AcademicManagementSystem.DTOs.QueryDtos;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
 using AcademicManagementSystem.Interfaces;
 using AcademicManagementSystem.Models;
@@ -18,9 +19,44 @@ namespace AcademicManagementSystem.Services
         }
 
 
-        public async Task<IEnumerable<User>> GetAllUsersAsync()
+        public async Task<QueryResultDto<User>> GetAllUsersAsync(UserQueryParameterDto queryParams)
         {
-            return await _context.Users.ToListAsync();
+            var query = _context.Users.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(queryParams.Search))
+            {
+                var searchTerm = queryParams.Search.Trim().ToLower();
+                query = query.Where(u =>
+                    u.FirstName.ToLower().Contains(searchTerm) ||
+                    u.LastName.ToLower().Contains(searchTerm) ||
+                    u.Email.ToLower().Contains(searchTerm)
+                );
+            }
+
+            if (queryParams.Role.HasValue)
+            {
+                query = query.Where(u => (int)u.Role! == queryParams.Role.Value);
+            }
+
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(u => u.Id)
+                .Skip((queryParams.PageNumber - 1) * queryParams.PageSize)
+                .Take(queryParams.PageSize)
+                .ToListAsync();
+
+            var queryResult = new QueryResultDto<User>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = queryParams.PageNumber,
+                PageSize = queryParams.PageSize
+            };
+
+            return queryResult;
+
         }
 
 
@@ -62,6 +98,21 @@ namespace AcademicManagementSystem.Services
                 })
                 .ToListAsync();
         }
+
+
+        public async Task<IEnumerable<object>> GetSubjectsAsync()
+        {
+            return await _context.Subjects
+                .Select(s => new
+                {
+                    s.Id,
+                    s.SubjectName,
+                    s.SubjectCode,
+                    s.SubjectDescription
+                })
+                .ToListAsync();
+        }
+
 
         public async Task<ClassDetails> CreateClassAsync(CreateClassDto dto)
         {

@@ -1,4 +1,5 @@
 ﻿using AcademicManagementSystem.DTOs;
+using AcademicManagementSystem.DTOs.QueryDtos;
 using AcademicManagementSystem.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -23,7 +24,11 @@ namespace AcademicManagementSystem.Controllers
 
 
         [HttpGet("users")]
-        public async Task<IActionResult> GetAllUsers() => Ok(await _adminService.GetAllUsersAsync());
+        public async Task<IActionResult> GetAllUsers([FromQuery] UserQueryParameterDto queryParams)
+        {
+            var pagedUsers = await _adminService.GetAllUsersAsync(queryParams);
+            return Ok(pagedUsers);
+        }
 
         [HttpGet("classes")]
         public async Task<IActionResult> GetClasses()
@@ -36,6 +41,11 @@ namespace AcademicManagementSystem.Controllers
         [HttpGet("teachers")]
         public async Task<IActionResult> GetTeachers()
             => Ok(await _adminService.GetTeachersAsync());
+
+
+        [HttpGet("subjects")]
+        public async Task<IActionResult> GetSubjects()
+            => Ok(await _adminService.GetSubjectsAsync());
 
 
         [HttpPost("classes")]
