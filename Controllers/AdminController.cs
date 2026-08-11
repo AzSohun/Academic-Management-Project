@@ -2,9 +2,7 @@
 using AcademicManagementSystem.DTOs.QueryDtos;
 using AcademicManagementSystem.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace AcademicManagementSystem.Controllers
 {
@@ -47,6 +45,14 @@ namespace AcademicManagementSystem.Controllers
         public async Task<IActionResult> GetSubjects()
             => Ok(await _adminService.GetSubjectsAsync());
 
+
+        [HttpDelete("users/{id}")]
+        public async Task<IActionResult> SoftDeleteUser(Guid id)
+        {
+            var res = await _adminService.SoftDeleteUserAsync(id);
+            if (!res) return NotFound("User Not Found!");
+            return Ok(new { message = "User deleted successfully" });
+        }
 
         [HttpPost("classes")]
         public async Task<IActionResult> CreateClass([FromBody] CreateClassDto dto)
@@ -96,9 +102,8 @@ namespace AcademicManagementSystem.Controllers
 
 
         [HttpPost("assign-student-to-class")]
-        public async Task<IActionResult> AssignStudent(Guid studentId, Guid classId)
+        public async Task<IActionResult> AssignStudent([FromQuery] Guid studentId, [FromQuery] Guid classId)
         {
-
             var res = await _adminService.AssignStudentToClassAsync(studentId, classId);
 
             if (!res)
@@ -107,7 +112,6 @@ namespace AcademicManagementSystem.Controllers
             }
 
             return Ok(res);
-
         }
 
 

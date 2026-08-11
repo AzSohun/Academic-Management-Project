@@ -2,6 +2,7 @@
 using AcademicManagementSystem.DTOs.AssignmentDtos;
 using AcademicManagementSystem.DTOs.QueryDtos;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
+using AcademicManagementSystem.DTOs.UserDtos;
 using AcademicManagementSystem.Models;
 
 namespace AcademicManagementSystem.Interfaces
@@ -10,10 +11,11 @@ namespace AcademicManagementSystem.Interfaces
     {
 
         Task<IEnumerable<object>> GetClassesAsync();
-        Task<QueryResultDto<User>> GetAllUsersAsync(UserQueryParameterDto queryParams);
+        Task<QueryResultDto<UserDto>> GetAllUsersAsync(UserQueryParameterDto queryParams);
         Task<IEnumerable<object>> GetStudentsAsync();
         Task<IEnumerable<object>> GetTeachersAsync();
         Task<IEnumerable<object>> GetSubjectsAsync();
+        Task<bool> SoftDeleteUserAsync(Guid id);
         Task<ClassDetails> CreateClassAsync(CreateClassDto dto);
         Task<ClassDetails?> UpdateClassAsync(Guid id, CreateClassDto dto);
         Task<bool> DeleteClassAsync(Guid id);

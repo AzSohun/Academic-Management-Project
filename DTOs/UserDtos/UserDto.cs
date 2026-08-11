@@ -8,6 +8,7 @@
         public String Email { get; set; } = String.Empty;
         public Role? Role { get; set; }
         public Gender? Gender { get; set; }
+        public bool IsDeleted { get; set; } = false;
     }
 
     public enum Role

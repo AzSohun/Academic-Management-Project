@@ -45,7 +45,7 @@ namespace AcademicManagementSystem.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Student>()
-                .HasOne<ClassDetails>()
+                .HasOne(s => s.ClassDetails)
                 .WithMany()
                 .HasForeignKey(s => s.ClassDetailsId)
                 .OnDelete(DeleteBehavior.SetNull);
@@ -55,6 +55,15 @@ namespace AcademicManagementSystem.Data
                 .WithMany()
                 .HasForeignKey(t => t.ClassDetailsId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<User>()
+                .HasQueryFilter(u => !u.IsDeleted);
+
+            modelBuilder.Entity<Student>()
+                .HasQueryFilter(s => s.User != null && !s.User.IsDeleted);
+
+            modelBuilder.Entity<Teacher>()
+                .HasQueryFilter(t => t.User != null && !t.User.IsDeleted);
 
             // --- Assignment Relationships ---
             modelBuilder.Entity<Assignment>()

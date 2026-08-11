@@ -3,6 +3,7 @@ using AcademicManagementSystem.DTOs;
 using AcademicManagementSystem.DTOs.AssignmentDtos;
 using AcademicManagementSystem.DTOs.QueryDtos;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
+using AcademicManagementSystem.DTOs.UserDtos;
 using AcademicManagementSystem.Interfaces;
 using AcademicManagementSystem.Models;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ namespace AcademicManagementSystem.Services
         }
 
 
-        public async Task<QueryResultDto<User>> GetAllUsersAsync(UserQueryParameterDto queryParams)
+        public async Task<QueryResultDto<UserDto>> GetAllUsersAsync(UserQueryParameterDto queryParams)
         {
             var query = _context.Users.AsQueryable();
 
@@ -38,16 +39,25 @@ namespace AcademicManagementSystem.Services
                 query = query.Where(u => (int)u.Role! == queryParams.Role.Value);
             }
 
-
             var totalCount = await query.CountAsync();
 
             var items = await query
                 .OrderByDescending(u => u.Id)
                 .Skip((queryParams.PageNumber - 1) * queryParams.PageSize)
                 .Take(queryParams.PageSize)
+                .Select(u => new UserDto
+                {
+                    Id = u.Id,
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    Email = u.Email,
+                    Role = (DTOs.UserDtos.Role?)u.Role,
+                    Gender = (DTOs.UserDtos.Gender?)u.Gender,
+                    IsDeleted = u.IsDeleted
+                })
                 .ToListAsync();
 
-            var queryResult = new QueryResultDto<User>
+            var queryResult = new QueryResultDto<UserDto>
             {
                 Items = items,
                 TotalCount = totalCount,
@@ -56,7 +66,6 @@ namespace AcademicManagementSystem.Services
             };
 
             return queryResult;
-
         }
 
 
@@ -111,6 +120,17 @@ namespace AcademicManagementSystem.Services
                     s.SubjectDescription
                 })
                 .ToListAsync();
+        }
+
+        public async Task<bool> SoftDeleteUserAsync(Guid id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return false;
+
+            user.IsDeleted = true;
+            await _context.SaveChangesAsync();
+
+            return true;
         }
 
 
