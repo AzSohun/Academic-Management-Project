@@ -2,7 +2,30 @@
 
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import Swal from "sweetalert2";
+
+const QUICK_CREDENTIALS = [
+    {
+        role: "Admin",
+        email: process.env.NEXT_PUBLIC_DEMO_ADMIN_EMAIL || "",
+        password: process.env.NEXT_PUBLIC_DEMO_ADMIN_PASSWORD || "",
+        badgeColor: "border-indigo-500/50 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-600 hover:text-white"
+    },
+    {
+        role: "Teacher",
+        email: process.env.NEXT_PUBLIC_DEMO_TEACHER_EMAIL || "",
+        password: process.env.NEXT_PUBLIC_DEMO_TEACHER_PASSWORD || "",
+        badgeColor: "border-purple-500/50 bg-purple-950/40 text-purple-300 hover:bg-purple-600 hover:text-white"
+    },
+    {
+        role: "Student",
+        email: process.env.NEXT_PUBLIC_DEMO_STUDENT_EMAIL || "",
+        password: process.env.NEXT_PUBLIC_DEMO_STUDENT_PASSWORD || "",
+        badgeColor: "border-emerald-500/50 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-600 hover:text-white"
+    }
+];
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -11,24 +34,68 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { login } = useAuth();
+    const { user, login } = useAuth();
+    const router = useRouter();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    // Safeguard: Redirect already logged-in users directly to /dashboard
+    useEffect(() => {
+        if (user) {
+            router.replace("/dashboard");
+        }
+    }, [user, router]);
+
+    // Main Login Handler
+    const handleSubmit = async (e?: React.FormEvent, overrideEmail?: string, overridePass?: string) => {
+        if (e) e.preventDefault();
         setError("");
         setIsSubmitting(true);
 
+        const loginEmail = overrideEmail || email;
+        const loginPass = overridePass || password;
+
         try {
-            await login({ email, password });
+            await login({ email: loginEmail, password: loginPass });
+
+            // Success Toast & Redirect to /dashboard
+            Swal.fire({
+                title: "Welcome Back!",
+                text: "Login successful. Redirecting to Dashboard...",
+                icon: "success",
+                timer: 1200,
+                showConfirmButton: false,
+                background: "#0f172a",
+                color: "#f8fafc",
+                customClass: {
+                    popup: "border border-slate-800 rounded-xl shadow-2xl",
+                    title: "text-sm font-bold text-white",
+                    htmlContainer: "text-xs text-slate-400",
+                }
+            });
+
+            router.push("/dashboard");
         } catch (err: any) {
             setError(err.response?.data?.message || "Login Failed");
         } finally {
             setIsSubmitting(false);
         }
-    }
+    };
+
+    // Quick Login Handler
+    const handleQuickLogin = (quickEmail: string, quickPass: string) => {
+        if (!quickEmail || !quickPass) {
+            setError("Quick login credentials not configured in environment variables.");
+            return;
+        }
+        setEmail(quickEmail);
+        setPassword(quickPass);
+        handleSubmit(undefined, quickEmail, quickPass);
+    };
+
+    // Prevent component flash if user is already logged in
+    if (user) return null;
 
     return (
-        <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-linear-to-br from-slate-950 via-slate-900 to-indigo-950 p-4 sm:p-6 select-none">
+        <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-950 p-4 sm:p-6 select-none font-sans">
             {/* Ambient Background Glows */}
             <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
@@ -48,17 +115,37 @@ export default function LoginPage() {
             {/* Login Form Container */}
             <form
                 onSubmit={handleSubmit}
-                className="relative z-10 w-full max-w-md bg-slate-900/70 backdrop-blur-xl p-8 rounded-xl shadow-2xl shadow-black/80 border border-slate-800"
+                className="relative z-10 w-full max-w-md bg-slate-900/80 backdrop-blur-xl p-8 rounded-xl shadow-2xl shadow-black/80 border border-slate-800"
             >
                 <h2 className="text-3xl font-bold mb-1 text-center bg-linear-to-r from-white via-indigo-100 to-slate-300 bg-clip-text text-transparent">
                     Welcome Back
                 </h2>
-                <p className="text-slate-400 text-sm text-center mb-6">
+                <p className="text-slate-400 text-xs text-center mb-5">
                     Sign in to continue to your dashboard
                 </p>
 
+                {/* 🟢 Quick Login Roles Container */}
+                <div className="mb-6 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 text-center mb-2">
+                        ⚡ Quick Login
+                    </span>
+                    <div className="grid grid-cols-3 gap-2">
+                        {QUICK_CREDENTIALS.map((quick) => (
+                            <button
+                                key={quick.role}
+                                type="button"
+                                onClick={() => handleQuickLogin(quick.email, quick.password)}
+                                disabled={isSubmitting}
+                                className={`py-1.5 px-2 rounded-md text-xs font-medium border transition-all cursor-pointer disabled:opacity-50 text-center ${quick.badgeColor}`}
+                            >
+                                {quick.role}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 {error && (
-                    <div className="mb-6 p-3 rounded-md bg-red-900/20 border border-red-900/50 text-red-400 text-sm text-center">
+                    <div className="mb-5 p-3 rounded-md bg-red-900/20 border border-red-900/50 text-red-400 text-xs text-center">
                         {error}
                     </div>
                 )}
@@ -77,7 +164,7 @@ export default function LoginPage() {
                         />
                     </div>
 
-                    {/* Password Input with Eye Toggle */}
+                    {/* Password Input */}
                     <div>
                         <label className="block text-xs font-medium text-slate-400 mb-1.5">Password</label>
                         <div className="relative">
@@ -92,7 +179,7 @@ export default function LoginPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 focus:outline-none"
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 focus:outline-none cursor-pointer"
                             >
                                 {showPassword ? (
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -115,7 +202,7 @@ export default function LoginPage() {
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full mt-6 bg-linear-to-r from-indigo-600 to-purple-600 text-white py-2.5 rounded-md font-medium shadow-lg shadow-indigo-600/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-purple-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 disabled:shadow-none transition-all duration-300"
+                    className="w-full mt-6 bg-linear-to-r from-indigo-600 to-purple-600 text-white py-2.5 rounded-md font-medium shadow-lg shadow-indigo-600/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-purple-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 disabled:shadow-none transition-all duration-300 cursor-pointer"
                 >
                     {isSubmitting ? "Signing In..." : "Sign In"}
                 </button>

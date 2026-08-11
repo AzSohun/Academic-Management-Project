@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import Swal from 'sweetalert2';
 
 // --- Types ---
@@ -14,7 +15,6 @@ interface User {
     gender?: number | string;
 }
 
-// 🟢 Server-Side Query Result DTO
 interface QueryResultDto<T> {
     items: T[];
     totalCount: number;
@@ -78,6 +78,14 @@ const getRoleName = (role: number | string) => {
     return roleMap[Number(role)] ?? 'Unknown';
 };
 
+const getRoleNumeric = (role: number | string): number => {
+    if (typeof role === 'number') return role;
+    if (role === 'Admin') return 0;
+    if (role === 'Teacher') return 1;
+    if (role === 'Student') return 2;
+    return isNaN(Number(role)) ? 2 : Number(role);
+};
+
 const getGenderName = (gender?: number | string) => {
     if (gender === undefined || gender === null) return 'N/A';
     if (typeof gender === 'string' && isNaN(Number(gender))) return gender;
@@ -95,10 +103,11 @@ const extractArrayData = (res: any) => {
 };
 
 export default function AdminView() {
+    const { user: currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'assignments'>('overview');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-    // 🟢 Server-Side Paginated Users State
+    // Paginated Users State
     const [usersResult, setUsersResult] = useState<QueryResultDto<User>>({
         items: [],
         totalCount: 0,
@@ -109,14 +118,14 @@ export default function AdminView() {
         hasNextPage: false,
     });
 
-    // 🟢 Server-Side Query Parameters State
+    // Query Parameters
     const [userSearch, setUserSearch] = useState('');
-    const [roleFilter, setRoleFilter] = useState<string>('all'); // 'all' | '0' | '1' | '2'
+    const [roleFilter, setRoleFilter] = useState<string>('all');
     const [pageNumber, setPageNumber] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [loadingUsers, setLoadingUsers] = useState(false);
 
-    // Other Core States
+    // Core States
     const [studentsList, setStudentsList] = useState<StudentOption[]>([]);
     const [teachersList, setTeachersList] = useState<TeacherOption[]>([]);
     const [classList, setClassList] = useState<ClassOption[]>([]);
@@ -137,6 +146,10 @@ export default function AdminView() {
     const [subjectName, setSubjectName] = useState('');
     const [subjectCode, setSubjectCode] = useState('');
     const [subjectDescription, setSubjectDescription] = useState('');
+    const [editingSubject, setEditingSubject] = useState<SubjectOption | null>(null);
+    const [editSubjectName, setEditSubjectName] = useState('');
+    const [editSubjectCode, setEditSubjectCode] = useState('');
+    const [editSubjectDescription, setEditSubjectDescription] = useState('');
 
     const [selectedStudentId, setSelectedStudentId] = useState('');
     const [selectedStudentClassId, setSelectedStudentClassId] = useState('');
@@ -144,7 +157,6 @@ export default function AdminView() {
     const [selectedTeacherId, setSelectedTeacherId] = useState('');
     const [selectedTeacherClassId, setSelectedTeacherClassId] = useState('');
 
-    // Fetch Dashboard Initial Data
     useEffect(() => {
         fetchDashboardData();
     }, []);
@@ -186,11 +198,7 @@ export default function AdminView() {
     const fetchPaginatedUsers = async () => {
         setLoadingUsers(true);
         try {
-            const params: Record<string, any> = {
-                pageNumber,
-                pageSize,
-            };
-
+            const params: Record<string, any> = { pageNumber, pageSize };
             if (userSearch.trim()) params.search = userSearch.trim();
             if (roleFilter !== 'all') params.role = Number(roleFilter);
 
@@ -218,13 +226,11 @@ export default function AdminView() {
         setTimeout(() => setStatusMsg(null), 4000);
     };
 
-    // Handle Search input change (reset to page 1)
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setUserSearch(e.target.value);
         setPageNumber(1);
     };
 
-    // Handle Role filter change (reset to page 1)
     const handleRoleFilterChange = (role: string) => {
         setRoleFilter(role);
         setPageNumber(1);
@@ -321,6 +327,73 @@ export default function AdminView() {
         }
     };
 
+
+    const handleOpenEditSubject = (s: SubjectOption) => {
+        setEditingSubject(s);
+        setEditSubjectName(s.subjectName);
+        setEditSubjectCode(s.subjectCode);
+        setEditSubjectDescription('');
+    };
+
+    const handleUpdateSubject = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingSubject) return;
+        try {
+            await api.put(`/admin/subjects/${editingSubject.id}`, {
+                subjectName: editSubjectName,
+                subjectCode: editSubjectCode,
+                subjectDescription: editSubjectDescription,
+            });
+            showStatus('success', `Subject "${editSubjectName}" updated successfully!`);
+            setEditingSubject(null);
+            fetchDashboardData();
+        } catch {
+            showStatus('error', 'Failed to update subject.');
+        }
+    };
+
+    const handleDeleteSubject = async (subjectItem: SubjectOption) => {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: `Do you really want to delete subject "${subjectItem.subjectName}"? This action cannot be undone.`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel',
+            background: '#0f172a',
+            color: '#f8fafc',
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#334155',
+            customClass: {
+                popup: 'border border-slate-800 rounded-xl shadow-2xl',
+                title: 'text-sm font-bold text-white',
+                htmlContainer: 'text-xs text-slate-400',
+            }
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await api.delete(`/admin/subjects/${subjectItem.id}`);
+                Swal.fire({
+                    title: 'Deleted!',
+                    text: `Subject "${subjectItem.subjectName}" has been deleted.`,
+                    icon: 'success',
+                    background: '#0f172a',
+                    color: '#f8fafc',
+                    confirmButtonColor: '#4f46e5',
+                    customClass: {
+                        popup: 'border border-slate-800 rounded-xl',
+                        title: 'text-sm font-bold text-white',
+                        htmlContainer: 'text-xs text-slate-400',
+                    }
+                });
+                fetchDashboardData();
+            } catch {
+                showStatus('error', 'Could not delete subject.');
+            }
+        }
+    };
+
     const handleAssignStudent = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedStudentId || !selectedStudentClassId) {
@@ -356,9 +429,38 @@ export default function AdminView() {
         }
     };
 
+    // Role Change Handler
+    const handleRoleChange = async (userId: string, newRoleValue: number) => {
+        try {
+            await api.put(`/admin/users/${userId}/role`, { role: newRoleValue });
+            showStatus('success', 'User role updated successfully!');
+            fetchPaginatedUsers();
+        } catch {
+            showStatus('error', 'Failed to update user role.');
+        }
+    };
 
-    // 🟢 SweetAlert2 Soft Delete Handler
+    // Soft Delete Handler
     const handleDeleteUser = async (userItem: User) => {
+        const currentUserId = (currentUser as any)?.id || (currentUser as any)?.userId;
+
+        if (userItem.email === currentUser?.email || (currentUserId && userItem.id === currentUserId)) {
+            Swal.fire({
+                title: 'Action Denied!',
+                text: 'You cannot delete your own account.',
+                icon: 'error',
+                background: '#0f172a',
+                color: '#f8fafc',
+                confirmButtonColor: '#e11d48',
+                customClass: {
+                    popup: 'border border-slate-800 rounded-xl',
+                    title: 'text-sm font-bold text-white',
+                    htmlContainer: 'text-xs text-slate-400',
+                }
+            });
+            return;
+        }
+
         const result = await Swal.fire({
             title: 'Are you sure?',
             text: `Do you really want to delete user "${userItem.firstName} ${userItem.lastName}"?`,
@@ -394,8 +496,9 @@ export default function AdminView() {
                     }
                 });
                 fetchPaginatedUsers();
-            } catch {
-                showStatus('error', 'Could not delete user.');
+            } catch (err: any) {
+                const errMessage = err.response?.data?.message || 'Could not delete user.';
+                showStatus('error', errMessage);
             }
         }
     };
@@ -461,7 +564,6 @@ export default function AdminView() {
                     } transition-all duration-200 bg-slate-900/90 border-r border-slate-800 flex flex-col justify-between shrink-0 h-full z-20`}
             >
                 <div className="flex flex-col h-full">
-                    {/* Header Branding */}
                     <div className="h-14 px-4 flex items-center justify-between border-b border-slate-800">
                         <div className="flex items-center gap-2.5 overflow-hidden">
                             <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
@@ -471,7 +573,7 @@ export default function AdminView() {
                         </div>
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
                             title="Toggle Sidebar"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -480,7 +582,6 @@ export default function AdminView() {
                         </button>
                     </div>
 
-                    {/* Navigation Links */}
                     <nav className="p-2 space-y-1">
                         {navItems.map((item) => {
                             const active = activeTab === item.id;
@@ -488,7 +589,7 @@ export default function AdminView() {
                                 <button
                                     key={item.id}
                                     onClick={() => setActiveTab(item.id as any)}
-                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition ${active ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition cursor-pointer ${active ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                                         }`}
                                 >
                                     <span>{item.icon}</span>
@@ -510,7 +611,6 @@ export default function AdminView() {
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-                {/* Top Header */}
                 <header className="h-14 px-6 bg-slate-900/60 border-b border-slate-800 flex items-center justify-between shrink-0">
                     <h1 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">{activeTab.replace('-', ' ')}</h1>
 
@@ -527,7 +627,6 @@ export default function AdminView() {
                     </button>
                 </header>
 
-                {/* Dashboard Workspace */}
                 <main className="flex-1 p-6 space-y-6 w-full overflow-y-auto">
                     {/* TAB 1: OVERVIEW */}
                     {activeTab === 'overview' && (
@@ -582,14 +681,13 @@ export default function AdminView() {
                     {activeTab === 'users' && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* Student Allocation */}
                                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                                     <h3 className="text-xs font-semibold text-slate-200">Assign Student to Class</h3>
                                     <form onSubmit={handleAssignStudent} className="space-y-3">
                                         <select
                                             value={selectedStudentId}
                                             onChange={(e) => setSelectedStudentId(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
                                             required
                                         >
                                             <option value="">Select Student...</option>
@@ -603,7 +701,7 @@ export default function AdminView() {
                                         <select
                                             value={selectedStudentClassId}
                                             onChange={(e) => setSelectedStudentClassId(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
                                             required
                                         >
                                             <option value="">Select Target Class...</option>
@@ -620,14 +718,13 @@ export default function AdminView() {
                                     </form>
                                 </div>
 
-                                {/* Teacher Allocation */}
                                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                                     <h3 className="text-xs font-semibold text-slate-200">Assign Teacher to Class</h3>
                                     <form onSubmit={handleAssignTeacher} className="space-y-3">
                                         <select
                                             value={selectedTeacherId}
                                             onChange={(e) => setSelectedTeacherId(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
                                             required
                                         >
                                             <option value="">Select Teacher...</option>
@@ -641,7 +738,7 @@ export default function AdminView() {
                                         <select
                                             value={selectedTeacherClassId}
                                             onChange={(e) => setSelectedTeacherClassId(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
                                             required
                                         >
                                             <option value="">Select Target Class...</option>
@@ -659,7 +756,7 @@ export default function AdminView() {
                                 </div>
                             </div>
 
-                            {/* Server-Side Paginated Users Table Panel */}
+                            {/* Users Table */}
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 space-y-4">
                                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                                     <div className="relative w-full sm:w-72">
@@ -677,7 +774,6 @@ export default function AdminView() {
                                         )}
                                     </div>
 
-                                    {/* Role Filters */}
                                     <div className="flex gap-1">
                                         {[
                                             { label: 'All', value: 'all' },
@@ -699,7 +795,6 @@ export default function AdminView() {
                                     </div>
                                 </div>
 
-                                {/* Table Body */}
                                 <div className="overflow-x-auto rounded-lg border border-slate-800">
                                     <table className="w-full text-left text-xs text-slate-300">
                                         <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
@@ -712,31 +807,54 @@ export default function AdminView() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
-                                            {usersResult.items.map((u) => (
-                                                <tr key={u.id} className="hover:bg-slate-800/30 transition">
-                                                    <td className="p-3 font-medium text-slate-200">
-                                                        {u.firstName} {u.lastName}
-                                                    </td>
-                                                    <td className="p-3 text-slate-400">{u.email}</td>
-                                                    <td className="p-3 text-slate-400">{getGenderName(u.gender)}</td>
-                                                    <td className="p-3">
-                                                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-indigo-300 border border-slate-700/60">
-                                                            {getRoleName(u.role)}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-3 text-right">
-                                                        <button
-                                                            onClick={() => handleDeleteUser(u)}
-                                                            className="px-2.5 py-1 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-[10px] font-medium rounded border border-rose-800/80 transition cursor-pointer"
-                                                        >
-                                                            Delete
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {usersResult.items.map((u) => {
+                                                const currentUserId = (currentUser as any)?.id || (currentUser as any)?.userId;
+                                                const isSelf = u.email === currentUser?.email || (currentUserId && u.id === currentUserId);
+                                                const numericRole = getRoleNumeric(u.role);
+
+                                                return (
+                                                    <tr key={u.id} className="hover:bg-slate-800/30 transition">
+                                                        <td className="p-3 font-medium text-slate-200">
+                                                            {u.firstName} {u.lastName}
+                                                        </td>
+                                                        <td className="p-3 text-slate-400">{u.email}</td>
+                                                        <td className="p-3 text-slate-400">{getGenderName(u.gender)}</td>
+
+                                                        {/* Role Dropdown */}
+                                                        <td className="p-3">
+                                                            <select
+                                                                value={numericRole}
+                                                                onChange={(e) => handleRoleChange(u.id, Number(e.target.value))}
+                                                                disabled={isSelf}
+                                                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-indigo-300 focus:outline-none focus:border-indigo-500 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                                                            >
+                                                                <option value={0}>Admin</option>
+                                                                <option value={1}>Teacher</option>
+                                                                <option value={2}>Student</option>
+                                                            </select>
+                                                        </td>
+
+                                                        {/* 🟢 Action Column: Delete enabled for EVERYONE except self */}
+                                                        <td className="p-3 text-right">
+                                                            {isSelf ? (
+                                                                <span className="px-2.5 py-1 text-[10px] font-medium text-slate-500 bg-slate-950 border border-slate-800 rounded italic select-none">
+                                                                    You (Current)
+                                                                </span>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => handleDeleteUser(u)}
+                                                                    className="px-2.5 py-1 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-[10px] font-medium rounded border border-rose-800/80 transition cursor-pointer"
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                             {usersResult.items.length === 0 && (
                                                 <tr>
-                                                    <td colSpan={4} className="p-6 text-center text-slate-500">
+                                                    <td colSpan={5} className="p-6 text-center text-slate-500">
                                                         {loadingUsers ? 'Loading server results...' : 'No users match your filter criteria.'}
                                                     </td>
                                                 </tr>
@@ -744,7 +862,7 @@ export default function AdminView() {
                                         </tbody>
                                     </table>
 
-
+                                    {/* Pagination Controls */}
                                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 bg-slate-950 border-t border-slate-800 text-xs text-slate-400">
                                         <div>
                                             {usersResult.totalCount === 0 ? (
@@ -778,7 +896,6 @@ export default function AdminView() {
                                                 <option value={20}>20 / page</option>
                                             </select>
 
-                                            {/* Prev / Next Buttons */}
                                             <div className="flex items-center gap-1">
                                                 <button
                                                     disabled={!usersResult.hasPreviousPage || loadingUsers}
@@ -811,7 +928,6 @@ export default function AdminView() {
                     {activeTab === 'classes' && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Class Creator */}
                                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                                     <h3 className="text-xs font-semibold text-slate-200">Create New Class</h3>
                                     <form onSubmit={handleCreateClass} className="space-y-3">
@@ -843,7 +959,6 @@ export default function AdminView() {
                                     </form>
                                 </div>
 
-                                {/* Subject Creator */}
                                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                                     <h3 className="text-xs font-semibold text-slate-200">Create New Subject</h3>
                                     <form onSubmit={handleCreateSubject} className="space-y-3">
@@ -886,7 +1001,6 @@ export default function AdminView() {
                                 </div>
                             </div>
 
-                            {/* Class Cards list with Edit and Delete */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                                     <h3 className="text-xs font-semibold text-slate-200">Active Classes ({classList.length})</h3>
@@ -928,16 +1042,98 @@ export default function AdminView() {
                                                     <h4 className="font-semibold text-xs text-emerald-300">{s.subjectName}</h4>
                                                     <p className="text-[10px] text-slate-400 mt-0.5">Code: <span className="text-slate-200 font-mono">{s.subjectCode}</span></p>
                                                 </div>
-                                                <span className="px-2 py-0.5 rounded text-[9px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800/80">
+
+                                                {/* <span className="px-2 py-0.5 rounded text-[9px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800/80">
                                                     Active
-                                                </span>
+                                                </span> */}
+
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={() => handleOpenEditSubject(s)}
+                                                        className="px-2 py-1 bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900 text-[10px] font-medium rounded border border-indigo-800/80 transition cursor-pointer"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteSubject(s)}
+                                                        className="px-2 py-1 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-[10px] font-medium rounded border border-rose-800/80 transition cursor-pointer"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                         {subjectList.length === 0 && (
                                             <p className="text-xs text-slate-500 col-span-full">No subjects created yet.</p>
                                         )}
+
+
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- Edit Subject Modal --- */}
+                    {editingSubject && (
+                        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-md shadow-2xl space-y-4">
+                                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                                    <h3 className="text-xs font-semibold text-slate-200">Edit Subject</h3>
+                                    <button
+                                        onClick={() => setEditingSubject(null)}
+                                        className="text-slate-400 hover:text-white text-sm cursor-pointer"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                <form onSubmit={handleUpdateSubject} className="space-y-3">
+                                    <div>
+                                        <label className="block text-[11px] font-medium text-slate-400 mb-1">Subject Name</label>
+                                        <input
+                                            type="text"
+                                            value={editSubjectName}
+                                            onChange={(e) => setEditSubjectName(e.target.value)}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-medium text-slate-400 mb-1">Subject Code</label>
+                                        <input
+                                            type="text"
+                                            value={editSubjectCode}
+                                            onChange={(e) => setEditSubjectCode(e.target.value)}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-medium text-slate-400 mb-1">Description</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Overview..."
+                                            value={editSubjectDescription}
+                                            onChange={(e) => setEditSubjectDescription(e.target.value)}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                        />
+                                    </div>
+                                    <div className="flex justify-end gap-2 pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditingSubject(null)}
+                                            className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-md text-xs hover:bg-slate-700 transition cursor-pointer"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-500 transition cursor-pointer"
+                                        >
+                                            Save Changes
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     )}
