@@ -14,7 +14,6 @@ namespace AcademicManagementSystem.Controllers
     [Authorize(Roles = "Teacher")]
     public class TeacherController : ControllerBase
     {
-
         private readonly ITeacherService _teacherService;
 
         public TeacherController(ITeacherService teacherService)
@@ -22,9 +21,25 @@ namespace AcademicManagementSystem.Controllers
             _teacherService = teacherService;
         }
 
-
         private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        [HttpGet("classes")]
+        public async Task<IActionResult> GetMyClasses()
+        {
+            return Ok(await _teacherService.GetMyClassesAsync(GetUserId()));
+        }
+
+        [HttpGet("assignments")]
+        public async Task<IActionResult> GetMyAssignments()
+        {
+            return Ok(await _teacherService.GetTeacherAssignmentsAsync(GetUserId()));
+        }
+
+        [HttpGet("submissions")]
+        public async Task<IActionResult> GetAllSubmissions()
+        {
+            return Ok(await _teacherService.GetAllSubmissionsForTeacherAsync(GetUserId()));
+        }
 
         [HttpPost("assignments")]
         public async Task<IActionResult> CreateAssignment([FromBody] CreateAssignmentDto dto)

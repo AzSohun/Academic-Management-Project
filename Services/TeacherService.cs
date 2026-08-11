@@ -7,9 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AcademicManagementSystem.Services
 {
-    public class TeacherService: ITeacherService
+    public class TeacherService : ITeacherService
     {
-
         private readonly AppDbContext _context;
 
         public TeacherService(AppDbContext context)
@@ -17,18 +16,54 @@ namespace AcademicManagementSystem.Services
             _context = context;
         }
 
-
-        public async Task<Teacher?> GetTeacherByUserIdAsync(Guid teacherId)
+        public async Task<Teacher?> GetTeacherByUserIdAsync(Guid userId)
         {
-            return await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == teacherId);
+            return await _context.Teachers
+                .Include(t => t.Classes)
+                .FirstOrDefaultAsync(t => t.UserId == userId);
         }
 
-
-        public async Task<AssignmentResponseDto> CreateAssignmentAsync(Guid teacherId, CreateAssignmentDto dto)
+        public async Task<IEnumerable<object>> GetMyClassesAsync(Guid userId)
         {
-            var teacher = await GetTeacherByUserIdAsync(teacherId);
+            var teacher = await GetTeacherByUserIdAsync(userId);
+            if (teacher == null) return Enumerable.Empty<object>();
 
-            if(teacher == null)
+            return teacher.Classes.Select(c => new
+            {
+                c.Id,
+                c.ClassName,
+                c.RoomNumber
+            });
+        }
+
+        public async Task<IEnumerable<AssignmentResponseDto>> GetTeacherAssignmentsAsync(Guid userId)
+        {
+            var teacher = await GetTeacherByUserIdAsync(userId);
+            if (teacher == null) return Enumerable.Empty<AssignmentResponseDto>();
+
+            return await _context.Assignments
+                .Include(a => a.ClassDetails)
+                .Include(a => a.Subject)
+                .Where(a => a.TeacherId == teacher.Id)
+                .Select(a => new AssignmentResponseDto
+                {
+                    Id = a.Id,
+                    Title = a.Title,
+                    Description = a.Description,
+                    Marks = a.Marks,
+                    DueDate = a.DueDate,
+                    IsDraft = a.IsDraft,
+                    ClassName = a.ClassDetails != null ? a.ClassDetails.ClassName : string.Empty,
+                    SubjectName = a.Subject != null ? a.Subject.SubjectName : string.Empty
+                })
+                .ToListAsync();
+        }
+
+        public async Task<AssignmentResponseDto> CreateAssignmentAsync(Guid userId, CreateAssignmentDto dto)
+        {
+            var teacher = await GetTeacherByUserIdAsync(userId);
+
+            if (teacher == null)
             {
                 throw new Exception("Teacher record not found!");
             }
@@ -50,6 +85,7 @@ namespace AcademicManagementSystem.Services
 
             return new AssignmentResponseDto
             {
+                Id = assignment.Id,
                 Title = assignment.Title,
                 Description = assignment.Description,
                 Marks = assignment.Marks,
@@ -58,14 +94,15 @@ namespace AcademicManagementSystem.Services
             };
         }
 
-
-        public async Task<bool> UpdateAssignmentAsync(Guid teacherId, Guid assignmentId, UpdateAssignmentDto dto)
+        public async Task<bool> UpdateAssignmentAsync(Guid userId, Guid assignmentId, UpdateAssignmentDto dto)
         {
-            var teacher = await GetTeacherByUserIdAsync(teacherId);
-            var assignment = await _context.Assignments.FirstOrDefaultAsync(a => a.Id == assignmentId && a.TeacherId == teacherId);
+            var teacher = await GetTeacherByUserIdAsync(userId);
+            if (teacher == null) return false;
 
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == assignmentId && a.TeacherId == teacher.Id);
 
-            if(assignment == null)
+            if (assignment == null)
             {
                 return false;
             }
@@ -81,15 +118,17 @@ namespace AcademicManagementSystem.Services
 
             await _context.SaveChangesAsync();
             return true;
-
         }
 
-        public async Task<bool> DeleteAssignmentAsync(Guid teacherId, Guid assignmentId)
+        public async Task<bool> DeleteAssignmentAsync(Guid userId, Guid assignmentId)
         {
-            var teacher = await GetTeacherByUserIdAsync(teacherId);
-            var assignment = await _context.Assignments.FirstOrDefaultAsync(a => a.Id == assignmentId && a.TeacherId == teacherId);
+            var teacher = await GetTeacherByUserIdAsync(userId);
+            if (teacher == null) return false;
 
-            if(assignment == null)
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == assignmentId && a.TeacherId == teacher.Id);
+
+            if (assignment == null)
             {
                 return false;
             }
@@ -100,14 +139,15 @@ namespace AcademicManagementSystem.Services
             return true;
         }
 
-
-        public async Task<bool> TogglePublishStatusAsync(Guid teacherId, Guid assignmentId, bool isDraft)
+        public async Task<bool> TogglePublishStatusAsync(Guid userId, Guid assignmentId, bool isDraft)
         {
+            var teacher = await GetTeacherByUserIdAsync(userId);
+            if (teacher == null) return false;
 
-            var teacher = await GetTeacherByUserIdAsync(teacherId);
-            var assignment = await _context.Assignments.FirstOrDefaultAsync(a => a.Id == assignmentId && a.TeacherId == teacherId);
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == assignmentId && a.TeacherId == teacher.Id);
 
-            if(assignment == null)
+            if (assignment == null)
             {
                 return false;
             }
@@ -116,22 +156,48 @@ namespace AcademicManagementSystem.Services
             await _context.SaveChangesAsync();
 
             return true;
-
         }
 
-
-        public async Task<IEnumerable<SubmissionResponseDto>> GetSubmissionsForAssignmentAsync(Guid teacherId, Guid assignmentId)
+        public async Task<IEnumerable<SubmissionResponseDto>> GetAllSubmissionsForTeacherAsync(Guid userId)
         {
+            var teacher = await GetTeacherByUserIdAsync(userId);
+            if (teacher == null) return Enumerable.Empty<SubmissionResponseDto>();
 
-            var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.Id == teacherId);
+            return await _context.Submissions
+                .Include(s => s.Student).ThenInclude(st => st!.User)
+                .Include(s => s.Assignment)
+                .Where(s => s.Assignment != null && s.Assignment.TeacherId == teacher.Id)
+                .Select(s => new SubmissionResponseDto
+                {
+                    Id = s.Id,
+                    FilePath = s.FilePath,
+                    SubmissionDate = s.SubmissionDate,
+                    MarkAssigned = s.MarkAssigned,
+                    TeacherFeedback = s.TeacherFeedback,
+                    Status = s.Status.ToString(),
+                    StudentName = s.Student != null && s.Student.User != null ? $"{s.Student.User.FirstName} {s.Student.User.LastName}" : string.Empty,
+                    AssignmentTitle = s.Assignment != null ? s.Assignment.Title : string.Empty,
+                })
+                .ToListAsync();
+        }
 
-            if(teacher == null)
+        public async Task<IEnumerable<SubmissionResponseDto>> GetSubmissionsForAssignmentAsync(Guid userId, Guid assignmentId)
+        {
+            var teacher = await GetTeacherByUserIdAsync(userId);
+            if (teacher == null)
             {
                 return Enumerable.Empty<SubmissionResponseDto>();
             }
 
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == assignmentId && a.TeacherId == teacher.Id);
 
-            var submittedAssignment = await _context.Submissions
+            if (assignment == null)
+            {
+                return Enumerable.Empty<SubmissionResponseDto>();
+            }
+
+            var submittedAssignments = await _context.Submissions
                 .Include(s => s.Student).ThenInclude(st => st!.User)
                 .Include(s => s.Assignment)
                 .Where(s => s.AssignmentId == assignmentId)
@@ -147,19 +213,19 @@ namespace AcademicManagementSystem.Services
                     AssignmentTitle = s.Assignment != null ? s.Assignment.Title : string.Empty,
                 }).ToListAsync();
 
-            return submittedAssignment;
-
+            return submittedAssignments;
         }
 
-
-        public async Task<bool> GradeSubmissionAsync(Guid teacherId, Guid submissionId, GradeSubmissionDto dto)
+        public async Task<bool> GradeSubmissionAsync(Guid userId, Guid submissionId, GradeSubmissionDto dto)
         {
+            var teacher = await GetTeacherByUserIdAsync(userId);
+            if (teacher == null) return false;
 
             var submission = await _context.Submissions
                 .Include(s => s.Assignment)
                 .FirstOrDefaultAsync(s => s.Id == submissionId);
 
-            if(submission == null)
+            if (submission == null || submission.Assignment == null || submission.Assignment.TeacherId != teacher.Id)
             {
                 return false;
             }
@@ -169,10 +235,8 @@ namespace AcademicManagementSystem.Services
             submission.Status = dto.Status;
             submission.UpdatedDate = DateTime.UtcNow;
 
-
             await _context.SaveChangesAsync();
             return true;
-
         }
     }
 }

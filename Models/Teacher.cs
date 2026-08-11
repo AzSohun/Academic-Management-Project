@@ -2,21 +2,19 @@
 {
     public class Teacher
     {
-
         public Guid Id { get; set; } = Guid.NewGuid();
-        public String TeacherCode { get; set; } = String.Empty;
+        public string TeacherCode { get; set; } = string.Empty;
         public DateOnly? DateOfBirth { get; set; }
-        public String PhoneNumber { get; set; } = String.Empty;
-        public String Address { get; set; } = String.Empty;
-        public String Qualification { get; set; } = String.Empty;
-        public String Specialization { get; set; } = String.Empty;
-        public String Experience { get; set; } = String.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string Qualification { get; set; } = string.Empty;
+        public string Specialization { get; set; } = string.Empty;
+        public string Experience { get; set; } = string.Empty;
 
         public Guid UserId { get; set; }
         public User? User { get; set; }
 
-        public Guid? ClassDetailsId { get; set; }
-        public ClassDetails? ClassDetails { get; set; }
+        public ICollection<ClassDetails> Classes { get; set; } = new List<ClassDetails>();
 
         public ICollection<Assignment> Assignments { get; set; } = new List<Assignment>();
 

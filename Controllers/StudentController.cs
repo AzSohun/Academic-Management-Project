@@ -12,7 +12,6 @@ namespace AcademicManagementSystem.Controllers
     [Authorize(Roles = "Student")]
     public class StudentController : ControllerBase
     {
-
         private readonly IStudentService _studentService;
 
         public StudentController(IStudentService studentService)
@@ -20,8 +19,14 @@ namespace AcademicManagementSystem.Controllers
             _studentService = studentService;
         }
 
-
         private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        [HttpGet("my-class")]
+        public async Task<IActionResult> GetMyClass()
+        {
+            var myClass = await _studentService.GetMyClassAsync(GetUserId());
+            return Ok(myClass);
+        }
 
         [HttpGet("assignments")]
         public async Task<IActionResult> GetMyClassAssignments()
@@ -61,6 +66,5 @@ namespace AcademicManagementSystem.Controllers
         {
             return Ok(await _studentService.GetMySubmissionsAsync(GetUserId()));
         }
-
     }
 }

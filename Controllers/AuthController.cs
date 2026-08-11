@@ -99,9 +99,24 @@ namespace AcademicManagementSystem.Controllers
 
 
         [HttpPost("logout")]
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
-            Response.Cookies.Delete("refreshToken");
+            var refreshToken = Request.Cookies["refreshToken"];
+
+            if (!string.IsNullOrWhiteSpace(refreshToken))
+            {
+                await _authService.LogoutAsync(refreshToken);
+            }
+
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Path = "/"
+            };
+            Response.Cookies.Delete("refreshToken", cookieOptions);
+
             return Ok(new { message = "Logged out successfully" });
         }
 

@@ -175,5 +175,17 @@ namespace AcademicManagementSystem.Services
         {
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         }
+
+        public async Task LogoutAsync(string refreshToken)
+        {
+            var user = await _appDbContext.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+
+            if (user != null)
+            {
+                user.RefreshToken = null;
+                user.RefreshTokenExpiryTime = null;
+                await _appDbContext.SaveChangesAsync();
+            }
+        }
     }
 }

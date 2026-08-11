@@ -8,6 +8,7 @@ namespace AcademicManagementSystem.Interfaces
         Task<AuthResponseDto> LoginAsync(LoginDto loginDto);
         Task<string> SignUpAsync(SignUpDto signUpDto);
         Task<AuthResponseDto> RefreshTokenAsync(string RefreshToken);
+        Task LogoutAsync(string refreshToken);
 
     }
 }

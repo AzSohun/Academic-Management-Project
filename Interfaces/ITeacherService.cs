@@ -6,11 +6,20 @@ namespace AcademicManagementSystem.Interfaces
 {
     public interface ITeacherService
     {
-        Task<AssignmentResponseDto> CreateAssignmentAsync(Guid teacherId, CreateAssignmentDto dto);
-        Task<bool> UpdateAssignmentAsync(Guid teacherId, Guid assignmentId, UpdateAssignmentDto dto);
-        Task<bool> DeleteAssignmentAsync(Guid teacherId, Guid assignmentId);
-        Task<bool> TogglePublishStatusAsync(Guid teacherId, Guid assignmentId, bool isDraft);
-        Task<IEnumerable<SubmissionResponseDto>> GetSubmissionsForAssignmentAsync(Guid teacherUserId, Guid assignmentId);
-        Task<bool> GradeSubmissionAsync(Guid teacherId, Guid submissionId, GradeSubmissionDto dto);
+        Task<Teacher?> GetTeacherByUserIdAsync(Guid userId);
+
+        Task<IEnumerable<object>> GetMyClassesAsync(Guid userId);
+
+        Task<IEnumerable<AssignmentResponseDto>> GetTeacherAssignmentsAsync(Guid userId);
+
+        Task<AssignmentResponseDto> CreateAssignmentAsync(Guid userId, CreateAssignmentDto dto);
+        Task<bool> UpdateAssignmentAsync(Guid userId, Guid assignmentId, UpdateAssignmentDto dto);
+        Task<bool> DeleteAssignmentAsync(Guid userId, Guid assignmentId);
+        Task<bool> TogglePublishStatusAsync(Guid userId, Guid assignmentId, bool isDraft);
+
+        Task<IEnumerable<SubmissionResponseDto>> GetAllSubmissionsForTeacherAsync(Guid userId);
+
+        Task<IEnumerable<SubmissionResponseDto>> GetSubmissionsForAssignmentAsync(Guid userId, Guid assignmentId);
+        Task<bool> GradeSubmissionAsync(Guid userId, Guid submissionId, GradeSubmissionDto dto);
     }
 }

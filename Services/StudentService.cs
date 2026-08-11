@@ -7,9 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AcademicManagementSystem.Services
 {
-    public class StudentService: IStudentService
+    public class StudentService : IStudentService
     {
-
         private readonly AppDbContext _context;
 
         public StudentService(AppDbContext context)
@@ -17,19 +16,37 @@ namespace AcademicManagementSystem.Services
             _context = context;
         }
 
-
         private async Task<Student?> GetStudentByUserIdAsync(Guid userId)
         {
-            return await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
+            return await _context.Students
+                .Include(s => s.ClassDetails)
+                .FirstOrDefaultAsync(s => s.UserId == userId);
         }
 
+        public async Task<object?> GetMyClassAsync(Guid userId)
+        {
+            var student = await _context.Students
+                .Include(s => s.ClassDetails)
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if (student == null || student.ClassDetails == null)
+            {
+                return null;
+            }
+
+            return new
+            {
+                id = student.ClassDetails.Id,
+                className = student.ClassDetails.ClassName,
+                roomNumber = student.ClassDetails.RoomNumber
+            };
+        }
 
         public async Task<IEnumerable<AssignmentResponseDto>> GetMyClassAssignmentsAsync(Guid studentId)
         {
-
             var student = await GetStudentByUserIdAsync(studentId);
 
-            if(student == null || student.ClassDetails == null)
+            if (student == null || student.ClassDetails == null)
             {
                 return Enumerable.Empty<AssignmentResponseDto>();
             }
@@ -37,6 +54,7 @@ namespace AcademicManagementSystem.Services
             var assignments = await _context.Assignments
                 .Where(a => a.ClassDetailsId == student.ClassDetailsId && !a.IsDraft)
                 .Include(a => a.Subject)
+                .Include(a => a.ClassDetails)
                 .Include(a => a.Teacher).ThenInclude(t => t!.User)
                 .Select(a => new AssignmentResponseDto
                 {
@@ -49,23 +67,20 @@ namespace AcademicManagementSystem.Services
                     ClassName = a.ClassDetails != null && a.ClassDetails.ClassName != null ? $"{a.ClassDetails.ClassName}" : string.Empty,
                     SubjectName = a.Subject != null && a.Subject.SubjectName != null ? $"{a.Subject.SubjectName}" : string.Empty,
                     TeacherName = a.Teacher != null && a.Teacher.User != null ? $"{a.Teacher.User.FirstName} {a.Teacher.User.LastName}" : string.Empty
-
                 }).ToListAsync();
 
             return assignments;
-
         }
-
 
         public async Task<AssignmentResponseDto?> GetAssignmentDetailsAsync(Guid assignmentId)
         {
             var assignment = await _context.Assignments
                 .Include(a => a.Subject)
                 .Include(a => a.ClassDetails)
-                .Include(a => a.Teacher).ThenInclude (t => t!.User)
-                .FirstOrDefaultAsync(a => a.Id == assignmentId && !a.IsDraft );
+                .Include(a => a.Teacher).ThenInclude(t => t!.User)
+                .FirstOrDefaultAsync(a => a.Id == assignmentId && !a.IsDraft);
 
-            if(assignment == null)
+            if (assignment == null)
             {
                 return null;
             }
@@ -85,17 +100,16 @@ namespace AcademicManagementSystem.Services
             return assignmentDetails;
         }
 
-
         public async Task<SubmissionResponseDto?> SubmitAssignmentAsync(Guid studentId, CreateSubmissionDto dto)
         {
             var student = await GetStudentByUserIdAsync(studentId);
-            if(student == null)
+            if (student == null)
             {
                 throw new Exception("Student Not Found");
             }
 
             var assignment = await _context.Assignments.FindAsync(dto.AssignmentId);
-            if(assignment == null)
+            if (assignment == null)
             {
                 throw new Exception("Assignment Not Found");
             }
@@ -121,28 +135,25 @@ namespace AcademicManagementSystem.Services
                 Status = submission.Status.ToString()
             };
 
-
             return submissionResponse;
-
         }
-
 
         public async Task<bool> UpdateSubmissionAsync(Guid studentId, Guid submissionId, string newFilePath)
         {
             var student = await GetStudentByUserIdAsync(studentId);
-            if (student == null) 
-            { 
-                throw new Exception("Student Not Found"); 
+            if (student == null)
+            {
+                throw new Exception("Student Not Found");
             }
 
             var submission = await _context.Submissions
                 .Include(s => s.Assignment)
                 .FirstOrDefaultAsync(s => s.Id == submissionId && s.StudentId == student.Id);
+
             if (submission == null)
             {
                 throw new Exception("Submission Not Found");
             }
-
 
             submission.FilePath = newFilePath ?? string.Empty;
             submission.SubmissionDate = DateTime.UtcNow;
@@ -153,11 +164,10 @@ namespace AcademicManagementSystem.Services
             return true;
         }
 
-
         public async Task<IEnumerable<SubmissionResponseDto?>> GetMySubmissionsAsync(Guid studentId)
         {
-            var student= await GetStudentByUserIdAsync(studentId);
-            if(student == null)
+            var student = await GetStudentByUserIdAsync(studentId);
+            if (student == null)
             {
                 return Enumerable.Empty<SubmissionResponseDto>();
             }
@@ -174,7 +184,6 @@ namespace AcademicManagementSystem.Services
                     TeacherFeedback = s.TeacherFeedback,
                     Status = s.Status.ToString(),
                     AssignmentTitle = s.Assignment != null ? s.Assignment.Title : string.Empty
-                    
                 }).ToListAsync();
 
             return submission;

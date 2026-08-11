@@ -18,11 +18,11 @@ namespace AcademicManagementSystem.Data
         public DbSet<Assignment> Assignments { get; set; }
         public DbSet<Submission> Submissions { get; set; }
 
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
+            // --- Indexes ---
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
@@ -46,16 +46,16 @@ namespace AcademicManagementSystem.Data
 
             modelBuilder.Entity<Student>()
                 .HasOne(s => s.ClassDetails)
-                .WithMany()
+                .WithMany(c => c.Students)
                 .HasForeignKey(s => s.ClassDetailsId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Teacher>()
-                .HasOne(t => t.ClassDetails)
-                .WithMany()
-                .HasForeignKey(t => t.ClassDetailsId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .HasMany(t => t.Classes)
+                .WithMany(c => c.Teachers)
+                .UsingEntity(j => j.ToTable("TeacherClasses")); 
 
+            // --- Global Query Filters ---
             modelBuilder.Entity<User>()
                 .HasQueryFilter(u => !u.IsDeleted);
 

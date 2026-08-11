@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AcademicManagementSystem.Services
 {
-    public class AdminService: IAdminService
+    public class AdminService : IAdminService
     {
         private readonly AppDbContext _context;
 
@@ -18,7 +18,6 @@ namespace AcademicManagementSystem.Services
         {
             _context = context;
         }
-
 
         public async Task<QueryResultDto<UserDto>> GetAllUsersAsync(UserQueryParameterDto queryParams)
         {
@@ -68,7 +67,6 @@ namespace AcademicManagementSystem.Services
             return queryResult;
         }
 
-
         public async Task<IEnumerable<object>> GetClassesAsync()
         {
             return await _context.ClassDetails
@@ -85,15 +83,15 @@ namespace AcademicManagementSystem.Services
         {
             return await _context.Students
                 .Include(s => s.User)
+                .Where(s => s.ClassDetailsId == null)
                 .Select(s => new
                 {
-                    s.Id, 
+                    s.Id,
                     FullName = s.User != null ? $"{s.User.FirstName} {s.User.LastName}" : "Unknown Student",
                     Email = s.User != null ? s.User.Email : string.Empty
                 })
                 .ToListAsync();
         }
-
 
         public async Task<IEnumerable<object>> GetTeachersAsync()
         {
@@ -108,7 +106,6 @@ namespace AcademicManagementSystem.Services
                 .ToListAsync();
         }
 
-
         public async Task<IEnumerable<object>> GetSubjectsAsync()
         {
             return await _context.Subjects
@@ -122,25 +119,37 @@ namespace AcademicManagementSystem.Services
                 .ToListAsync();
         }
 
-        public async Task<bool> SoftDeleteUserAsync(Guid id)
+        public async Task<bool> UpdateUserRoleAsync(Guid id, DTOs.UserDtos.Role newRole)
         {
             var user = await _context.Users.FindAsync(id);
             if (user == null) return false;
 
-            user.IsDeleted = true;
+            user.Role = (Models.Role)newRole;
             await _context.SaveChangesAsync();
-
             return true;
         }
 
+        public async Task<bool> SoftDeleteUserAsync(Guid targetUserId, Guid currentUserId)
+        {
+            if (targetUserId == currentUserId)
+            {
+                throw new Exception("You cannot delete your own account.");
+            }
+
+            var user = await _context.Users.FindAsync(targetUserId);
+            if (user == null) return false;
+
+            user.IsDeleted = true;
+            await _context.SaveChangesAsync();
+            return true;
+        }
 
         public async Task<ClassDetails> CreateClassAsync(CreateClassDto dto)
         {
+            var isClassExist = await _context.ClassDetails.FirstOrDefaultAsync(c =>
+                c.ClassName == dto.ClassName && c.RoomNumber == dto.RoomNumber);
 
-            var isClassExist = await _context.ClassDetails.FirstOrDefaultAsync(c => 
-            c.ClassName == dto.ClassName && c.RoomNumber == dto.RoomNumber);
-
-            if (isClassExist != null) 
+            if (isClassExist != null)
             {
                 throw new Exception("Class with the same name or room number already exists.");
             }
@@ -155,9 +164,7 @@ namespace AcademicManagementSystem.Services
             await _context.SaveChangesAsync();
 
             return newClass;
-
         }
-
 
         public async Task<ClassDetails?> UpdateClassAsync(Guid id, CreateClassDto dto)
         {
@@ -183,9 +190,8 @@ namespace AcademicManagementSystem.Services
 
         public async Task<Subject> CreateSubjectAsync(CreateSubjectDto dto)
         {
-
             var isSubjectExist = await _context.Subjects.FirstOrDefaultAsync(s =>
-            s.SubjectName == dto.SubjectName && s.SubjectCode == dto.SubjectCode);
+                s.SubjectName == dto.SubjectName && s.SubjectCode == dto.SubjectCode);
 
             if (isSubjectExist != null)
             {
@@ -203,13 +209,33 @@ namespace AcademicManagementSystem.Services
             await _context.SaveChangesAsync();
 
             return newSubject;
-
         }
 
+        public async Task<Subject?> UpdateSubjectAsync(Guid id, CreateSubjectDto dto)
+        {
+            var subject = await _context.Subjects.FindAsync(id);
+            if (subject == null) return null;
+
+            subject.SubjectName = dto.SubjectName;
+            subject.SubjectCode = dto.SubjectCode;
+            subject.SubjectDescription = dto.SubjectDescription;
+
+            await _context.SaveChangesAsync();
+            return subject;
+        }
+
+        public async Task<bool> DeleteSubjectAsync(Guid id)
+        {
+            var subject = await _context.Subjects.FindAsync(id);
+            if (subject == null) return false;
+
+            _context.Subjects.Remove(subject);
+            await _context.SaveChangesAsync();
+            return true;
+        }
 
         public async Task<bool> AssignStudentToClassAsync(Guid studentId, Guid classId)
         {
-
             var student = await _context.Students.FindAsync(studentId);
 
             if (student == null)
@@ -227,18 +253,29 @@ namespace AcademicManagementSystem.Services
             return true;
         }
 
-
-        public async Task<bool> AssignTeacherToClassAsync(Guid teacherId, Guid classDetailsId)
+        public async Task<bool> AssignTeacherToClassAsync(Guid teacherId, List<Guid> classDetailsIds)
         {
-            var teacher = await _context.Teachers.FindAsync(teacherId);
+            var teacher = await _context.Teachers
+                .Include(t => t.Classes)
+                .FirstOrDefaultAsync(t => t.Id == teacherId);
+
             if (teacher == null) return false;
 
-            var classDetails = await _context.ClassDetails.FindAsync(classDetailsId);
-            if (classDetails == null) return false;
+            var classes = await _context.ClassDetails
+                .Where(c => classDetailsIds.Contains(c.Id))
+                .ToListAsync();
 
-            teacher.ClassDetailsId = classDetailsId;
+            if (!classes.Any()) return false;
+
+            foreach (var cls in classes)
+            {
+                if (!teacher.Classes.Any(c => c.Id == cls.Id))
+                {
+                    teacher.Classes.Add(cls);
+                }
+            }
+
             await _context.SaveChangesAsync();
-
             return true;
         }
 
@@ -264,10 +301,8 @@ namespace AcademicManagementSystem.Services
             return assignmentResponses;
         }
 
-
         public async Task<IEnumerable<SubmissionResponseDto>> GetAllSubmissionsAsync()
         {
-
             var submissionResponses = await _context.Submissions
                 .Include(s => s.Student).ThenInclude(st => st!.User)
                 .Include(s => s.Assignment)
@@ -285,6 +320,5 @@ namespace AcademicManagementSystem.Services
 
             return submissionResponses;
         }
-
     }
 }

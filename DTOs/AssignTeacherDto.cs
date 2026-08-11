@@ -3,6 +3,6 @@
     public class AssignTeacherDto
     {
         public Guid TeacherId { get; set; }
-        public Guid ClassDetailsId { get; set; }
+        public List<Guid> ClassDetailsIds { get; set; } = new List<Guid>();
     }
 }
