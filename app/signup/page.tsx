@@ -1,12 +1,15 @@
 "use client";
 
 import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 
 export default function SignUpPage() {
     const router = useRouter();
+    const { user } = useAuth();
 
     const [formData, setFormData] = useState({
         firstName: "",
@@ -20,6 +23,12 @@ export default function SignUpPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            router.replace("/dashboard");
+        }
+    }, [user, router]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -38,18 +47,64 @@ export default function SignUpPage() {
             const res = await api.post('/auth/signup', formData);
 
             if (res.data.message === 'User already exists') {
-                setError('User with this email already exists.');
+                const existMsg = 'User with this email already exists.';
+                setError(existMsg);
+
+                Swal.fire({
+                    title: 'Registration Failed!',
+                    text: existMsg,
+                    icon: 'warning',
+                    background: '#0f172a',
+                    color: '#f8fafc',
+                    confirmButtonColor: '#e11d48',
+                    customClass: {
+                        popup: 'border border-slate-800 rounded-xl shadow-2xl',
+                        title: 'text-sm font-bold text-white',
+                        htmlContainer: 'text-xs text-slate-400',
+                    }
+                });
                 return;
             }
 
-            // alert('Registration Successful! Please Login.');
+            await Swal.fire({
+                title: 'Registration Successful!',
+                text: 'Your account has been created. Redirecting to Login...',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false,
+                background: '#0f172a',
+                color: '#f8fafc',
+                customClass: {
+                    popup: 'border border-slate-800 rounded-xl shadow-2xl',
+                    title: 'text-sm font-bold text-white',
+                    htmlContainer: 'text-xs text-slate-400',
+                }
+            });
+
             router.push('/login');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Registration failed. Please try again.');
+            const errMsg = err.response?.data?.message || 'Registration failed. Please try again.';
+            setError(errMsg);
+
+            Swal.fire({
+                title: 'Error!',
+                text: errMsg,
+                icon: 'error',
+                background: '#0f172a',
+                color: '#f8fafc',
+                confirmButtonColor: '#e11d48',
+                customClass: {
+                    popup: 'border border-slate-800 rounded-xl shadow-2xl',
+                    title: 'text-sm font-bold text-white',
+                    htmlContainer: 'text-xs text-slate-400',
+                }
+            });
         } finally {
             setLoading(false);
         }
     };
+
+    if (user) return null;
 
     return (
         <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-linear-to-br from-slate-950 via-slate-900 to-indigo-950 p-4 sm:p-6 select-none">
@@ -143,7 +198,7 @@ export default function SignUpPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 focus:outline-none"
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 focus:outline-none cursor-pointer"
                             >
                                 {showPassword ? (
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -194,7 +249,7 @@ export default function SignUpPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-linear-to-r from-indigo-600 to-purple-600 text-white font-medium py-2.5 rounded-md shadow-lg shadow-indigo-600/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-purple-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 disabled:shadow-none transition-all duration-300 mt-2"
+                        className="w-full bg-linear-to-r from-indigo-600 to-purple-600 text-white font-medium py-2.5 rounded-md shadow-lg shadow-indigo-600/25 hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-purple-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 disabled:shadow-none transition-all duration-300 mt-2 cursor-pointer"
                     >
                         {loading ? 'Creating Account...' : 'Sign Up'}
                     </button>
