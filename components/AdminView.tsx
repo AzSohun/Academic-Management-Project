@@ -356,6 +356,50 @@ export default function AdminView() {
         }
     };
 
+
+    // 🟢 SweetAlert2 Soft Delete Handler
+    const handleDeleteUser = async (userItem: User) => {
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: `Do you really want to delete user "${userItem.firstName} ${userItem.lastName}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel',
+            background: '#0f172a',
+            color: '#f8fafc',
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#334155',
+            customClass: {
+                popup: 'border border-slate-800 rounded-xl shadow-2xl',
+                title: 'text-sm font-bold text-white',
+                htmlContainer: 'text-xs text-slate-400',
+            }
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await api.delete(`/admin/users/${userItem.id}`);
+                Swal.fire({
+                    title: 'Deleted!',
+                    text: `User "${userItem.firstName} ${userItem.lastName}" has been removed.`,
+                    icon: 'success',
+                    background: '#0f172a',
+                    color: '#f8fafc',
+                    confirmButtonColor: '#4f46e5',
+                    customClass: {
+                        popup: 'border border-slate-800 rounded-xl',
+                        title: 'text-sm font-bold text-white',
+                        htmlContainer: 'text-xs text-slate-400',
+                    }
+                });
+                fetchPaginatedUsers();
+            } catch {
+                showStatus('error', 'Could not delete user.');
+            }
+        }
+    };
+
     const navItems = [
         {
             id: 'overview',
@@ -664,6 +708,7 @@ export default function AdminView() {
                                                 <th className="p-3">Email</th>
                                                 <th className="p-3">Gender</th>
                                                 <th className="p-3">Role</th>
+                                                <th className="p-3 text-right">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
@@ -678,6 +723,14 @@ export default function AdminView() {
                                                         <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-indigo-300 border border-slate-700/60">
                                                             {getRoleName(u.role)}
                                                         </span>
+                                                    </td>
+                                                    <td className="p-3 text-right">
+                                                        <button
+                                                            onClick={() => handleDeleteUser(u)}
+                                                            className="px-2.5 py-1 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-[10px] font-medium rounded border border-rose-800/80 transition cursor-pointer"
+                                                        >
+                                                            Delete
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))}
