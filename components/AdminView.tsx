@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import Swal from 'sweetalert2';
@@ -71,12 +71,6 @@ interface Submission {
     studentName: string;
     assignmentTitle: string;
 }
-
-const getRoleName = (role: number | string) => {
-    if (typeof role === 'string' && isNaN(Number(role))) return role;
-    const roleMap: Record<number, string> = { 0: 'Admin', 1: 'Teacher', 2: 'Student' };
-    return roleMap[Number(role)] ?? 'Unknown';
-};
 
 const getRoleNumeric = (role: number | string): number => {
     if (typeof role === 'number') return role;
@@ -327,7 +321,6 @@ export default function AdminView() {
         }
     };
 
-
     const handleOpenEditSubject = (s: SubjectOption) => {
         setEditingSubject(s);
         setEditSubjectName(s.subjectName);
@@ -403,8 +396,12 @@ export default function AdminView() {
         try {
             await api.post(`/admin/assign-student-to-class?studentId=${selectedStudentId}&classId=${selectedStudentClassId}`);
             showStatus('success', 'Student successfully assigned to class!');
+
+            setStudentsList((prev) => prev.filter((s) => s.id !== selectedStudentId));
             setSelectedStudentId('');
             setSelectedStudentClassId('');
+
+            fetchDashboardData();
         } catch {
             showStatus('error', 'Failed to assign student.');
         }
@@ -419,17 +416,20 @@ export default function AdminView() {
         try {
             await api.post(`/admin/assign-teacher-class`, {
                 teacherId: selectedTeacherId,
-                classDetailsId: selectedTeacherClassId,
+                classDetailsIds: [selectedTeacherClassId],
             });
+
             showStatus('success', 'Teacher assigned to class successfully!');
             setSelectedTeacherId('');
             setSelectedTeacherClassId('');
-        } catch {
-            showStatus('error', 'Failed to assign teacher.');
+
+            fetchDashboardData();
+        } catch (err: any) {
+            const errMessage = err.response?.data?.message || 'Failed to assign teacher.';
+            showStatus('error', errMessage);
         }
     };
 
-    // Role Change Handler
     const handleRoleChange = async (userId: string, newRoleValue: number) => {
         try {
             await api.put(`/admin/users/${userId}/role`, { role: newRoleValue });
@@ -440,7 +440,6 @@ export default function AdminView() {
         }
     };
 
-    // Soft Delete Handler
     const handleDeleteUser = async (userItem: User) => {
         const currentUserId = (currentUser as any)?.id || (currentUser as any)?.userId;
 
@@ -681,36 +680,51 @@ export default function AdminView() {
                     {activeTab === 'users' && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Assign Student Box */}
                                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                                     <h3 className="text-xs font-semibold text-slate-200">Assign Student to Class</h3>
                                     <form onSubmit={handleAssignStudent} className="space-y-3">
-                                        <select
-                                            value={selectedStudentId}
-                                            onChange={(e) => setSelectedStudentId(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
-                                            required
-                                        >
-                                            <option value="">Select Student...</option>
-                                            {studentsList.map((st) => (
-                                                <option key={st.id} value={st.id}>
-                                                    {st.fullName} ({st.email})
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={selectedStudentId}
+                                                onChange={(e) => setSelectedStudentId(e.target.value)}
+                                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 pr-8 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 cursor-pointer appearance-none transition"
+                                                required
+                                            >
+                                                <option value="" className="bg-slate-900 text-slate-400">Select Student...</option>
+                                                {studentsList.map((st) => (
+                                                    <option key={st.id} value={st.id} className="bg-slate-900 text-slate-200 py-1">
+                                                        {st.fullName} ({st.email})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                        </div>
 
-                                        <select
-                                            value={selectedStudentClassId}
-                                            onChange={(e) => setSelectedStudentClassId(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
-                                            required
-                                        >
-                                            <option value="">Select Target Class...</option>
-                                            {classList.map((c) => (
-                                                <option key={c.id} value={c.id}>
-                                                    {c.className} ({c.roomNumber})
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={selectedStudentClassId}
+                                                onChange={(e) => setSelectedStudentClassId(e.target.value)}
+                                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 pr-8 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 cursor-pointer appearance-none transition"
+                                                required
+                                            >
+                                                <option value="" className="bg-slate-900 text-slate-400">Select Target Class...</option>
+                                                {classList.map((c) => (
+                                                    <option key={c.id} value={c.id} className="bg-slate-900 text-slate-200 py-1">
+                                                        {c.className} ({c.roomNumber})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                        </div>
 
                                         <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded-lg text-xs transition cursor-pointer">
                                             Assign Student
@@ -718,36 +732,51 @@ export default function AdminView() {
                                     </form>
                                 </div>
 
+                                {/* Assign Teacher Box */}
                                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                                     <h3 className="text-xs font-semibold text-slate-200">Assign Teacher to Class</h3>
                                     <form onSubmit={handleAssignTeacher} className="space-y-3">
-                                        <select
-                                            value={selectedTeacherId}
-                                            onChange={(e) => setSelectedTeacherId(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                                            required
-                                        >
-                                            <option value="">Select Teacher...</option>
-                                            {teachersList.map((t) => (
-                                                <option key={t.id} value={t.id}>
-                                                    {t.fullName} ({t.specialization || 'Teacher'})
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={selectedTeacherId}
+                                                onChange={(e) => setSelectedTeacherId(e.target.value)}
+                                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 pr-8 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 cursor-pointer appearance-none transition"
+                                                required
+                                            >
+                                                <option value="" className="bg-slate-900 text-slate-400">Select Teacher...</option>
+                                                {teachersList.map((t) => (
+                                                    <option key={t.id} value={t.id} className="bg-slate-900 text-slate-200 py-1">
+                                                        {t.fullName} ({t.specialization || 'Teacher'})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                        </div>
 
-                                        <select
-                                            value={selectedTeacherClassId}
-                                            onChange={(e) => setSelectedTeacherClassId(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                                            required
-                                        >
-                                            <option value="">Select Target Class...</option>
-                                            {classList.map((c) => (
-                                                <option key={c.id} value={c.id}>
-                                                    {c.className} ({c.roomNumber})
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="relative">
+                                            <select
+                                                value={selectedTeacherClassId}
+                                                onChange={(e) => setSelectedTeacherClassId(e.target.value)}
+                                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 pr-8 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 cursor-pointer appearance-none transition"
+                                                required
+                                            >
+                                                <option value="" className="bg-slate-900 text-slate-400">Select Target Class...</option>
+                                                {classList.map((c) => (
+                                                    <option key={c.id} value={c.id} className="bg-slate-900 text-slate-200 py-1">
+                                                        {c.className} ({c.roomNumber})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                        </div>
 
                                         <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 rounded-lg text-xs transition cursor-pointer">
                                             Assign Teacher
@@ -820,21 +849,19 @@ export default function AdminView() {
                                                         <td className="p-3 text-slate-400">{u.email}</td>
                                                         <td className="p-3 text-slate-400">{getGenderName(u.gender)}</td>
 
-                                                        {/* Role Dropdown */}
                                                         <td className="p-3">
                                                             <select
                                                                 value={numericRole}
                                                                 onChange={(e) => handleRoleChange(u.id, Number(e.target.value))}
                                                                 disabled={isSelf}
-                                                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-indigo-300 focus:outline-none focus:border-indigo-500 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                                                                className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-[11px] text-indigo-300 focus:outline-none focus:border-indigo-500 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                                                             >
-                                                                <option value={0}>Admin</option>
-                                                                <option value={1}>Teacher</option>
-                                                                <option value={2}>Student</option>
+                                                                <option value={0} className="bg-slate-900 text-slate-200">Admin</option>
+                                                                <option value={1} className="bg-slate-900 text-slate-200">Teacher</option>
+                                                                <option value={2} className="bg-slate-900 text-slate-200">Student</option>
                                                             </select>
                                                         </td>
 
-                                                        {/* 🟢 Action Column: Delete enabled for EVERYONE except self */}
                                                         <td className="p-3 text-right">
                                                             {isSelf ? (
                                                                 <span className="px-2.5 py-1 text-[10px] font-medium text-slate-500 bg-slate-950 border border-slate-800 rounded italic select-none">
@@ -891,9 +918,9 @@ export default function AdminView() {
                                                 }}
                                                 className="bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-slate-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
                                             >
-                                                <option value={10}>10 / page</option>
-                                                <option value={15}>15 / page</option>
-                                                <option value={20}>20 / page</option>
+                                                <option value={10} className="bg-slate-900">10 / page</option>
+                                                <option value={15} className="bg-slate-900">15 / page</option>
+                                                <option value={20} className="bg-slate-900">20 / page</option>
                                             </select>
 
                                             <div className="flex items-center gap-1">
@@ -1043,10 +1070,6 @@ export default function AdminView() {
                                                     <p className="text-[10px] text-slate-400 mt-0.5">Code: <span className="text-slate-200 font-mono">{s.subjectCode}</span></p>
                                                 </div>
 
-                                                {/* <span className="px-2 py-0.5 rounded text-[9px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800/80">
-                                                    Active
-                                                </span> */}
-
                                                 <div className="flex items-center gap-1.5">
                                                     <button
                                                         onClick={() => handleOpenEditSubject(s)}
@@ -1066,74 +1089,8 @@ export default function AdminView() {
                                         {subjectList.length === 0 && (
                                             <p className="text-xs text-slate-500 col-span-full">No subjects created yet.</p>
                                         )}
-
-
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* --- Edit Subject Modal --- */}
-                    {editingSubject && (
-                        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-                            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-md shadow-2xl space-y-4">
-                                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                                    <h3 className="text-xs font-semibold text-slate-200">Edit Subject</h3>
-                                    <button
-                                        onClick={() => setEditingSubject(null)}
-                                        className="text-slate-400 hover:text-white text-sm cursor-pointer"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                                <form onSubmit={handleUpdateSubject} className="space-y-3">
-                                    <div>
-                                        <label className="block text-[11px] font-medium text-slate-400 mb-1">Subject Name</label>
-                                        <input
-                                            type="text"
-                                            value={editSubjectName}
-                                            onChange={(e) => setEditSubjectName(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-medium text-slate-400 mb-1">Subject Code</label>
-                                        <input
-                                            type="text"
-                                            value={editSubjectCode}
-                                            onChange={(e) => setEditSubjectCode(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-medium text-slate-400 mb-1">Description</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Overview..."
-                                            value={editSubjectDescription}
-                                            onChange={(e) => setEditSubjectDescription(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-                                        />
-                                    </div>
-                                    <div className="flex justify-end gap-2 pt-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setEditingSubject(null)}
-                                            className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-md text-xs hover:bg-slate-700 transition cursor-pointer"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-500 transition cursor-pointer"
-                                        >
-                                            Save Changes
-                                        </button>
-                                    </div>
-                                </form>
                             </div>
                         </div>
                     )}
@@ -1262,6 +1219,70 @@ export default function AdminView() {
                                 <button
                                     type="button"
                                     onClick={() => setEditingClass(null)}
+                                    className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-md text-xs hover:bg-slate-700 transition cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-500 transition cursor-pointer"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* --- Edit Subject Modal --- */}
+            {editingSubject && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-md shadow-2xl space-y-4">
+                        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                            <h3 className="text-xs font-semibold text-slate-200">Edit Subject</h3>
+                            <button
+                                onClick={() => setEditingSubject(null)}
+                                className="text-slate-400 hover:text-white text-sm cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <form onSubmit={handleUpdateSubject} className="space-y-3">
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-400 mb-1">Subject Name</label>
+                                <input
+                                    type="text"
+                                    value={editSubjectName}
+                                    onChange={(e) => setEditSubjectName(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-400 mb-1">Subject Code</label>
+                                <input
+                                    type="text"
+                                    value={editSubjectCode}
+                                    onChange={(e) => setEditSubjectCode(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-400 mb-1">Description</label>
+                                <input
+                                    type="text"
+                                    placeholder="Overview..."
+                                    value={editSubjectDescription}
+                                    onChange={(e) => setEditSubjectDescription(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingSubject(null)}
                                     className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-md text-xs hover:bg-slate-700 transition cursor-pointer"
                                 >
                                     Cancel

@@ -34,17 +34,21 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { user, login } = useAuth();
+    const [mounted, setMounted] = useState(false);
+
+    const { user, login, isLoading } = useAuth();
     const router = useRouter();
 
-    // Safeguard: Redirect already logged-in users directly to /dashboard
     useEffect(() => {
-        if (user) {
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (mounted && !isLoading && user) {
             router.replace("/dashboard");
         }
-    }, [user, router]);
+    }, [mounted, user, isLoading, router]);
 
-    // Main Login Handler
     const handleSubmit = async (e?: React.FormEvent, overrideEmail?: string, overridePass?: string) => {
         if (e) e.preventDefault();
         setError("");
@@ -56,7 +60,6 @@ export default function LoginPage() {
         try {
             await login({ email: loginEmail, password: loginPass });
 
-            // Success Toast & Redirect to /dashboard
             Swal.fire({
                 title: "Welcome Back!",
                 text: "Login successful. Redirecting to Dashboard...",
@@ -80,7 +83,6 @@ export default function LoginPage() {
         }
     };
 
-    // Quick Login Handler
     const handleQuickLogin = (quickEmail: string, quickPass: string) => {
         if (!quickEmail || !quickPass) {
             setError("Quick login credentials not configured in environment variables.");
@@ -91,12 +93,16 @@ export default function LoginPage() {
         handleSubmit(undefined, quickEmail, quickPass);
     };
 
-    // Prevent component flash if user is already logged in
-    if (user) return null;
+    if (!mounted || isLoading || user) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-slate-950 p-4 sm:p-6 select-none font-sans">
-            {/* Ambient Background Glows */}
             <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-purple-600/20 blur-3xl" />
             <div className="pointer-events-none absolute top-1/2 left-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-500/10 blur-3xl" />

@@ -28,7 +28,7 @@ interface Submission {
     submissionDate: string;
     markAssigned: number | null;
     teacherFeedback: string;
-    status: string; // 'Submitted' | 'Graded'
+    status: string; // 'Submitted' | 'Graded' | 'Late' | 'Pending'
     assignmentId: string;
     assignmentTitle: string;
 }
@@ -66,9 +66,9 @@ export default function StudentView() {
         setLoading(true);
         try {
             const [classRes, assignmentsRes, submissionsRes] = await Promise.allSettled([
-                api.get('/student/class'),
+                api.get('/student/my-class'),
                 api.get('/student/assignments'),
-                api.get('/student/submissions'),
+                api.get('/student/my-submissions'),
             ]);
 
             if (classRes.status === 'fulfilled') setEnrolledClass(classRes.value.data);
@@ -109,7 +109,7 @@ export default function StudentView() {
 
         setIsSubmittingTask(true);
         try {
-            await api.post('/student/submit', {
+            await api.post('/student/submissions', {
                 assignmentId: selectedAssignment.id,
                 filePath: filePathInput,
             });

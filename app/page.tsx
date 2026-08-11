@@ -5,9 +5,9 @@ export default function Home() {
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-linear-to-br from-slate-950 via-slate-900 to-zinc-950 p-6 sm:p-12 text-center">
       {/* Updated Gradient Shade Glows */}
-      <div className="pointer-events-none absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-violet-600/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-cyan-600/15 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/2 left-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -top-40 -left-40 h-125 w-125 rounded-full bg-violet-600/15 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -right-40 h-125 w-125 rounded-full bg-cyan-600/15 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/2 left-1/2 h-100 w-100 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
 
       <div className="relative z-10 flex flex-col items-center w-full max-w-5xl">
         {/* Heading with Cyan/Violet Gradient Text */}
