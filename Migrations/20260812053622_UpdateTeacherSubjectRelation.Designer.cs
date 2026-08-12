@@ -3,6 +3,7 @@ using System;
 using AcademicManagementSystem.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AcademicManagementSystem.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260812053622_UpdateTeacherSubjectRelation")]
+    partial class UpdateTeacherSubjectRelation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -324,21 +327,6 @@ namespace AcademicManagementSystem.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("ClassDetailsSubject", b =>
-                {
-                    b.Property<Guid>("ClassesId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SubjectsId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("ClassesId", "SubjectsId");
-
-                    b.HasIndex("SubjectsId");
-
-                    b.ToTable("ClassSubjects", (string)null);
-                });
-
             modelBuilder.Entity("ClassDetailsTeacher", b =>
                 {
                     b.Property<Guid>("ClassesId")
@@ -442,21 +430,6 @@ namespace AcademicManagementSystem.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("ClassDetailsSubject", b =>
-                {
-                    b.HasOne("AcademicManagementSystem.Models.ClassDetails", null)
-                        .WithMany()
-                        .HasForeignKey("ClassesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AcademicManagementSystem.Models.Subject", null)
-                        .WithMany()
-                        .HasForeignKey("SubjectsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("ClassDetailsTeacher", b =>

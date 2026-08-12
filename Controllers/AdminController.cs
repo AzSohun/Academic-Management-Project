@@ -1,5 +1,7 @@
-﻿using AcademicManagementSystem.DTOs;
+﻿using AcademicManagementSystem.DTOs.Assign;
+using AcademicManagementSystem.DTOs.Class;
 using AcademicManagementSystem.DTOs.QueryDtos;
+using AcademicManagementSystem.DTOs.Subject;
 using AcademicManagementSystem.DTOs.UserDtos;
 using AcademicManagementSystem.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -151,6 +153,34 @@ namespace AcademicManagementSystem.Controllers
             var res = await _adminService.AssignTeacherToClassAsync(dto.TeacherId, dto.ClassDetailsIds);
             if (!res) return BadRequest(new { message = "Unable to assign teacher to the class." });
             return Ok(new { message = "Teacher assigned successfully." });
+        }
+
+        [HttpPost("assign-subject-teacher")]
+        public async Task<IActionResult> AssignSubjectTeacher([FromQuery] Guid teacherId, [FromQuery] Guid subjectId)
+        {
+            var result = await _adminService.AssignSubjectToTeacherAsync(teacherId, subjectId);
+            return result ? Ok("Assigned successfully") : BadRequest("Failed to assign");
+        }
+
+        [HttpDelete("remove-subject-teacher")]
+        public async Task<IActionResult> RemoveSubjectTeacher([FromQuery] Guid teacherId, [FromQuery] Guid subjectId)
+        {
+            var result = await _adminService.RemoveSubjectFromTeacherAsync(teacherId, subjectId);
+            return result ? Ok("Removed successfully") : BadRequest("Failed to remove");
+        }
+
+        [HttpPost("assign-subject-class")]
+        public async Task<IActionResult> AssignSubjectClass([FromQuery] Guid classId, [FromQuery] Guid subjectId)
+        {
+            var result = await _adminService.AssignSubjectToClassAsync(classId, subjectId);
+            return result ? Ok("Assigned successfully") : BadRequest("Failed to assign");
+        }
+
+        [HttpDelete("remove-subject-class")]
+        public async Task<IActionResult> RemoveSubjectClass([FromQuery] Guid classId, [FromQuery] Guid subjectId)
+        {
+            var result = await _adminService.RemoveSubjectFromClassAsync(classId, subjectId);
+            return result ? Ok("Removed successfully") : BadRequest("Failed to remove");
         }
 
         [HttpGet("assignments")]

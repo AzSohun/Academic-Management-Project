@@ -9,6 +9,10 @@
         public Role? Role { get; set; }
         public Gender? Gender { get; set; }
         public bool IsDeleted { get; set; } = false;
+
+        public string AllocatedClass { get; set; } = string.Empty;
+        public List<string> TeacherClasses { get; set; } = new List<string>();
+        public List<string> TeacherSubjects { get; set; } = new List<string>();
     }
 
     public enum Role

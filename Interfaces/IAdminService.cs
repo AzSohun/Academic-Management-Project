@@ -1,6 +1,7 @@
-﻿using AcademicManagementSystem.DTOs;
-using AcademicManagementSystem.DTOs.AssignmentDtos;
+﻿using AcademicManagementSystem.DTOs.AssignmentDtos;
+using AcademicManagementSystem.DTOs.Class;
 using AcademicManagementSystem.DTOs.QueryDtos;
+using AcademicManagementSystem.DTOs.Subject;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
 using AcademicManagementSystem.DTOs.UserDtos;
 using AcademicManagementSystem.Models;
@@ -23,8 +24,11 @@ namespace AcademicManagementSystem.Interfaces
         Task<Subject?> UpdateSubjectAsync(Guid id, CreateSubjectDto dto);
         Task<bool> DeleteSubjectAsync(Guid id);
         Task<bool> AssignStudentToClassAsync(Guid studentId, Guid classId);
-
         Task<bool> AssignTeacherToClassAsync(Guid teacherId, List<Guid> classDetailsIds);
+        Task<bool> AssignSubjectToTeacherAsync(Guid teacherId, Guid subjectId);
+        Task<bool> RemoveSubjectFromTeacherAsync(Guid teacherId, Guid subjectId);
+        Task<bool> AssignSubjectToClassAsync(Guid classId, Guid subjectId);
+        Task<bool> RemoveSubjectFromClassAsync(Guid classId, Guid subjectId);
 
         Task<IEnumerable<AssignmentResponseDto>> GetAllAssignmentsAsync();
         Task<IEnumerable<SubmissionResponseDto>> GetAllSubmissionsAsync();

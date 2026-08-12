@@ -44,6 +44,11 @@ namespace AcademicManagementSystem.Data
                 .HasForeignKey<Teacher>(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Teacher>()
+                .HasMany(t => t.Subjects)
+                .WithMany(s => s.Teachers)
+                .UsingEntity(j => j.ToTable("TeacherSubjects"));
+
             modelBuilder.Entity<Student>()
                 .HasOne(s => s.ClassDetails)
                 .WithMany(c => c.Students)
@@ -53,7 +58,12 @@ namespace AcademicManagementSystem.Data
             modelBuilder.Entity<Teacher>()
                 .HasMany(t => t.Classes)
                 .WithMany(c => c.Teachers)
-                .UsingEntity(j => j.ToTable("TeacherClasses")); 
+                .UsingEntity(j => j.ToTable("TeacherClasses"));
+
+            modelBuilder.Entity<ClassDetails>()
+                .HasMany(c => c.Subjects)
+                .WithMany(s => s.Classes)
+                .UsingEntity(j => j.ToTable("ClassSubjects"));
 
             // --- Global Query Filters ---
             modelBuilder.Entity<User>()

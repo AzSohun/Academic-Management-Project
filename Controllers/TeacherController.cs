@@ -29,6 +29,12 @@ namespace AcademicManagementSystem.Controllers
             return Ok(await _teacherService.GetMyClassesAsync(GetUserId()));
         }
 
+        [HttpGet("subjects")]
+        public async Task<IActionResult> GetMySubjects()
+        {
+            return Ok(await _teacherService.GetMySubjectsAsync(GetUserId()));
+        }
+
         [HttpGet("assignments")]
         public async Task<IActionResult> GetMyAssignments()
         {

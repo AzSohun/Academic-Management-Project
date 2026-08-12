@@ -1,7 +1,8 @@
 ﻿using AcademicManagementSystem.Data;
-using AcademicManagementSystem.DTOs;
 using AcademicManagementSystem.DTOs.AssignmentDtos;
+using AcademicManagementSystem.DTOs.Class;
 using AcademicManagementSystem.DTOs.QueryDtos;
+using AcademicManagementSystem.DTOs.Subject;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
 using AcademicManagementSystem.DTOs.UserDtos;
 using AcademicManagementSystem.Interfaces;
@@ -40,11 +41,31 @@ namespace AcademicManagementSystem.Services
 
             var totalCount = await query.CountAsync();
 
-            var items = await query
+            var users = await query
                 .OrderByDescending(u => u.Id)
                 .Skip((queryParams.PageNumber - 1) * queryParams.PageSize)
                 .Take(queryParams.PageSize)
-                .Select(u => new UserDto
+                .ToListAsync();
+
+            var userIds = users.Select(u => u.Id).ToList();
+
+            var students = await _context.Students
+                .Include(s => s.ClassDetails)
+                .Where(s => userIds.Contains(s.UserId))
+                .ToDictionaryAsync(s => s.UserId);
+
+            var teachers = await _context.Teachers
+                .Include(t => t.Classes)
+                .Include(t => t.Subjects)
+                .Where(t => userIds.Contains(t.UserId))
+                .ToDictionaryAsync(t => t.UserId);
+
+            var items = users.Select(u =>
+            {
+                var isStudent = students.TryGetValue(u.Id, out var student);
+                var isTeacher = teachers.TryGetValue(u.Id, out var teacher);
+
+                return new UserDto
                 {
                     Id = u.Id,
                     FirstName = u.FirstName,
@@ -52,19 +73,21 @@ namespace AcademicManagementSystem.Services
                     Email = u.Email,
                     Role = (DTOs.UserDtos.Role?)u.Role,
                     Gender = (DTOs.UserDtos.Gender?)u.Gender,
-                    IsDeleted = u.IsDeleted
-                })
-                .ToListAsync();
+                    IsDeleted = u.IsDeleted,
 
-            var queryResult = new QueryResultDto<UserDto>
+                    AllocatedClass = isStudent && student?.ClassDetails != null ? student.ClassDetails.ClassName : string.Empty,
+                    TeacherClasses = isTeacher && teacher?.Classes != null ? teacher.Classes.Select(c => c.ClassName).ToList() : new List<string>(),
+                    TeacherSubjects = isTeacher && teacher?.Subjects != null ? teacher.Subjects.Select(s => s.SubjectName).ToList() : new List<string>()
+                };
+            }).ToList();
+
+            return new QueryResultDto<UserDto>
             {
                 Items = items,
                 TotalCount = totalCount,
                 PageNumber = queryParams.PageNumber,
                 PageSize = queryParams.PageSize
             };
-
-            return queryResult;
         }
 
         public async Task<IEnumerable<object>> GetClassesAsync()
@@ -278,6 +301,66 @@ namespace AcademicManagementSystem.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+
+        public async Task<bool> AssignSubjectToTeacherAsync(Guid teacherId, Guid subjectId)
+        {
+            var teacher = await _context.Teachers.Include(t => t.Subjects).FirstOrDefaultAsync(t => t.Id == teacherId);
+            var subject = await _context.Subjects.FindAsync(subjectId);
+
+            if (teacher == null || subject == null) return false;
+
+            if (!teacher.Subjects.Any(s => s.Id == subjectId))
+            {
+                teacher.Subjects.Add(subject);
+                await _context.SaveChangesAsync();
+            }
+            return true;
+        }
+
+        public async Task<bool> RemoveSubjectFromTeacherAsync(Guid teacherId, Guid subjectId)
+        {
+            var teacher = await _context.Teachers.Include(t => t.Subjects).FirstOrDefaultAsync(t => t.Id == teacherId);
+            var subject = teacher?.Subjects.FirstOrDefault(s => s.Id == subjectId);
+
+            if (teacher != null && subject != null)
+            {
+                teacher.Subjects.Remove(subject);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            return false;
+        }
+
+        public async Task<bool> AssignSubjectToClassAsync(Guid classId, Guid subjectId)
+        {
+            var classDetails = await _context.ClassDetails.Include(c => c.Subjects).FirstOrDefaultAsync(c => c.Id == classId);
+            var subject = await _context.Subjects.FindAsync(subjectId);
+
+            if (classDetails == null || subject == null) return false;
+
+            if (!classDetails.Subjects.Any(s => s.Id == subjectId))
+            {
+                classDetails.Subjects.Add(subject);
+                await _context.SaveChangesAsync();
+            }
+            return true;
+        }
+
+        public async Task<bool> RemoveSubjectFromClassAsync(Guid classId, Guid subjectId)
+        {
+            var classDetails = await _context.ClassDetails.Include(c => c.Subjects).FirstOrDefaultAsync(c => c.Id == classId);
+            var subject = classDetails?.Subjects.FirstOrDefault(s => s.Id == subjectId);
+
+            if (classDetails != null && subject != null)
+            {
+                classDetails.Subjects.Remove(subject);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            return false;
+        }
+
 
         public async Task<IEnumerable<AssignmentResponseDto>> GetAllAssignmentsAsync()
         {

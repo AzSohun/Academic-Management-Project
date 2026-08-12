@@ -1,4 +1,5 @@
 ﻿using AcademicManagementSystem.DTOs.AssignmentDtos;
+using AcademicManagementSystem.DTOs.Subject;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
 using AcademicManagementSystem.Models;
 
@@ -9,6 +10,8 @@ namespace AcademicManagementSystem.Interfaces
         Task<Teacher?> GetTeacherByUserIdAsync(Guid userId);
 
         Task<IEnumerable<object>> GetMyClassesAsync(Guid userId);
+
+        Task<IEnumerable<SubjectResponseDto>> GetMySubjectsAsync(Guid userId);
 
         Task<IEnumerable<AssignmentResponseDto>> GetTeacherAssignmentsAsync(Guid userId);
 

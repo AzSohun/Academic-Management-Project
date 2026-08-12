@@ -53,6 +53,7 @@ namespace AcademicManagementSystem.Services
 
             var assignments = await _context.Assignments
                 .Where(a => a.ClassDetailsId == student.ClassDetailsId && !a.IsDraft)
+                .Where(a => !_context.Submissions.Any(s => s.AssignmentId == a.Id && s.StudentId == student.Id))
                 .Include(a => a.Subject)
                 .Include(a => a.ClassDetails)
                 .Include(a => a.Teacher).ThenInclude(t => t!.User)

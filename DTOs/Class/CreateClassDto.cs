@@ -1,4 +1,4 @@
-﻿namespace AcademicManagementSystem.DTOs
+﻿namespace AcademicManagementSystem.DTOs.Class
 {
     public class CreateClassDto
     {

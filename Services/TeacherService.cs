@@ -1,5 +1,6 @@
 ﻿using AcademicManagementSystem.Data;
 using AcademicManagementSystem.DTOs.AssignmentDtos;
+using AcademicManagementSystem.DTOs.Subject;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
 using AcademicManagementSystem.Interfaces;
 using AcademicManagementSystem.Models;
@@ -20,6 +21,7 @@ namespace AcademicManagementSystem.Services
         {
             return await _context.Teachers
                 .Include(t => t.Classes)
+                .Include(t => t.Subjects)
                 .FirstOrDefaultAsync(t => t.UserId == userId);
         }
 
@@ -34,6 +36,24 @@ namespace AcademicManagementSystem.Services
                 c.ClassName,
                 c.RoomNumber
             });
+        }
+
+        public async Task<IEnumerable<SubjectResponseDto>> GetMySubjectsAsync(Guid userId)
+        {
+            var teacher = await GetTeacherByUserIdAsync(userId);
+
+            if (teacher == null || teacher.Subjects == null || !teacher.Subjects.Any())
+            {
+                return Enumerable.Empty<SubjectResponseDto>();
+            }
+
+            return teacher.Subjects.Select(s => new SubjectResponseDto
+            {
+                Id = s.Id,
+                SubjectName = s.SubjectName,
+                SubjectCode = s.SubjectCode,
+                SubjectDescription = s.SubjectDescription
+            }).ToList();
         }
 
         public async Task<IEnumerable<AssignmentResponseDto>> GetTeacherAssignmentsAsync(Guid userId)
