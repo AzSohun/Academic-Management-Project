@@ -13,6 +13,13 @@ interface MyClass {
     subjectCode?: string;
 }
 
+interface Subject {
+    id: string;
+    subjectName: string;
+    subjectCode: string;
+    subjectDescription?: string;
+}
+
 interface Assignment {
     id: string;
     title: string;
@@ -20,9 +27,9 @@ interface Assignment {
     marks: number;
     dueDate: string;
     isDraft: boolean;
-    subjectId?: string;
+    subjectId?: string; // Optional backend support
     subjectName?: string;
-    classDetailsId?: string;
+    classDetailsId?: string; // Optional backend support
     className?: string;
 }
 
@@ -32,7 +39,7 @@ interface Submission {
     submissionDate: string;
     markAssigned: number | null;
     teacherFeedback: string;
-    status: string; // 'Submitted' | 'Graded' | 'Late'
+    status?: string;
     studentName: string;
     assignmentId: string;
     assignmentTitle: string;
@@ -52,6 +59,7 @@ export default function TeacherView() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     const [myClasses, setMyClasses] = useState<MyClass[]>([]);
+    const [subjectList, setSubjectList] = useState<Subject[]>([]);
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [submissions, setSubmissions] = useState<Submission[]>([]);
 
@@ -64,7 +72,18 @@ export default function TeacherView() {
     const [newMarks, setNewMarks] = useState<number>(100);
     const [newDueDate, setNewDueDate] = useState('');
     const [selectedClassId, setSelectedClassId] = useState('');
+    const [selectedSubjectId, setSelectedSubjectId] = useState('');
     const [isDraft, setIsDraft] = useState(false);
+
+    // --- Edit Assignment Modal State ---
+    const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [editDescription, setEditDescription] = useState('');
+    const [editMarks, setEditMarks] = useState<number>(100);
+    const [editDueDate, setEditDueDate] = useState('');
+    const [editClassId, setEditClassId] = useState('');
+    const [editSubjectId, setEditSubjectId] = useState('');
+    const [editIsDraft, setEditIsDraft] = useState(false);
 
     // --- Grading Modal State ---
     const [gradingSubmission, setGradingSubmission] = useState<Submission | null>(null);
@@ -81,13 +100,15 @@ export default function TeacherView() {
     const fetchTeacherData = async () => {
         setLoading(true);
         try {
-            const [classesRes, assignmentsRes, submissionsRes] = await Promise.allSettled([
+            const [classesRes, subjectsRes, assignmentsRes, submissionsRes] = await Promise.allSettled([
                 api.get('/teacher/classes'),
+                api.get('/teacher/subjects'),
                 api.get('/teacher/assignments'),
                 api.get('/teacher/submissions'),
             ]);
 
             if (classesRes.status === 'fulfilled') setMyClasses(extractArrayData(classesRes.value));
+            if (subjectsRes.status === 'fulfilled') setSubjectList(extractArrayData(subjectsRes.value));
             if (assignmentsRes.status === 'fulfilled') setAssignments(extractArrayData(assignmentsRes.value));
             if (submissionsRes.status === 'fulfilled') setSubmissions(extractArrayData(submissionsRes.value));
         } catch {
@@ -102,16 +123,22 @@ export default function TeacherView() {
         setTimeout(() => setStatusMsg(null), 4000);
     };
 
-    // Pending Submissions Counter
     const pendingSubmissionsCount = useMemo(() => {
-        return submissions.filter((s) => s.markAssigned === null || s.status.toLowerCase() === 'submitted').length;
+        return submissions.filter((s) => {
+            const statusStr = s.status ? s.status.toLowerCase() : '';
+            return s.markAssigned === null || statusStr === 'submitted' || statusStr === '';
+        }).length;
     }, [submissions]);
 
-    // Filtered Submissions List
     const filteredSubmissions = useMemo(() => {
         return submissions.filter((s) => {
-            if (submissionFilter === 'pending') return s.markAssigned === null || s.status.toLowerCase() === 'submitted';
-            if (submissionFilter === 'graded') return s.markAssigned !== null || s.status.toLowerCase() === 'graded';
+            const statusStr = s.status ? s.status.toLowerCase() : '';
+            if (submissionFilter === 'pending') {
+                return s.markAssigned === null || statusStr === 'submitted' || statusStr === '';
+            }
+            if (submissionFilter === 'graded') {
+                return s.markAssigned !== null || statusStr === 'graded';
+            }
             return true;
         });
     }, [submissions, submissionFilter]);
@@ -119,8 +146,8 @@ export default function TeacherView() {
     // --- Create Assignment Handler ---
     const handleCreateAssignment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedClassId) {
-            showStatus('error', 'Please select a class for the assignment.');
+        if (!selectedClassId || !selectedSubjectId) {
+            showStatus('error', 'Please select both class and subject.');
             return;
         }
 
@@ -132,6 +159,7 @@ export default function TeacherView() {
                 dueDate: newDueDate,
                 isDraft,
                 classDetailsId: selectedClassId,
+                subjectId: selectedSubjectId,
             });
 
             showStatus('success', `Assignment "${newTitle}" created successfully!`);
@@ -140,12 +168,84 @@ export default function TeacherView() {
             setNewMarks(100);
             setNewDueDate('');
             setSelectedClassId('');
+            setSelectedSubjectId('');
             setIsDraft(false);
             fetchTeacherData();
         } catch {
             showStatus('error', 'Failed to create assignment.');
         }
     };
+
+    // --- Open Edit Assignment Modal ---
+    const handleOpenEditAssignment = (assignment: Assignment) => {
+        setEditingAssignment(assignment);
+        setEditTitle(assignment.title);
+        setEditDescription(assignment.description);
+        setEditMarks(assignment.marks);
+        setEditDueDate(assignment.dueDate.split('T')[0]); // ensuring proper date format
+        setEditIsDraft(assignment.isDraft);
+        setEditClassId(assignment.classDetailsId || ''); // Requires backend to send these IDs
+        setEditSubjectId(assignment.subjectId || '');
+    };
+
+    // --- Update Assignment Handler ---
+    const handleUpdateAssignment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingAssignment || !editClassId || !editSubjectId) {
+            showStatus('error', 'Please fill all required fields including Class and Subject.');
+            return;
+        }
+
+        try {
+            await api.put(`/teacher/assignments/${editingAssignment.id}`, {
+                title: editTitle,
+                description: editDescription,
+                marks: Number(editMarks),
+                dueDate: editDueDate,
+                isDraft: editIsDraft,
+                classDetailsId: editClassId,
+                subjectId: editSubjectId,
+            });
+
+            showStatus('success', 'Assignment updated successfully!');
+            setEditingAssignment(null);
+            fetchTeacherData();
+        } catch {
+            showStatus('error', 'Failed to update assignment.');
+        }
+    };
+
+    // --- SweetAlert2 Publish Assignment Handler ---
+    const handlePublishAssignment = async (assignment: Assignment) => {
+        const result = await Swal.fire({
+            title: 'Publish Assignment?',
+            text: `Are you sure you want to publish "${assignment.title}"? Once published, students can see it.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Publish',
+            cancelButtonText: 'Keep as Draft',
+            background: '#0f172a',
+            color: '#f8fafc',
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#334155',
+            customClass: {
+                popup: 'border border-slate-800 rounded-xl shadow-2xl',
+                title: 'text-sm font-bold text-white',
+                htmlContainer: 'text-xs text-slate-400',
+            }
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await api.patch(`/teacher/assignments/${assignment.id}/publish?isDraft=false`);
+                showStatus('success', 'Assignment published successfully!');
+                fetchTeacherData();
+            } catch {
+                showStatus('error', 'Failed to publish assignment.');
+            }
+        }
+    };
+
 
     // --- SweetAlert2 Delete Assignment Handler ---
     const handleDeleteAssignment = async (assignment: Assignment) => {
@@ -204,8 +304,8 @@ export default function TeacherView() {
 
         try {
             await api.post(`/teacher/submissions/${gradingSubmission.id}/grade`, {
-                markAssigned: Number(givenMark),
-                teacherFeedback: givenFeedback,
+                marksAssigned: Number(givenMark),
+                feedback: givenFeedback,
             });
 
             showStatus('success', 'Grade & Feedback updated successfully!');
@@ -279,7 +379,6 @@ export default function TeacherView() {
                     } transition-all duration-200 bg-slate-900/90 border-r border-slate-800 flex flex-col justify-between shrink-0 h-full z-20`}
             >
                 <div className="flex flex-col h-full">
-                    {/* Header Branding */}
                     <div className="h-14 px-4 flex items-center justify-between border-b border-slate-800">
                         <div className="flex items-center gap-2.5 overflow-hidden">
                             <div className="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
@@ -298,7 +397,6 @@ export default function TeacherView() {
                         </button>
                     </div>
 
-                    {/* Navigation Links */}
                     <nav className="p-2 space-y-1">
                         {navItems.map((item) => {
                             const active = activeTab === item.id;
@@ -328,7 +426,6 @@ export default function TeacherView() {
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-                {/* Top Header */}
                 <header className="h-14 px-6 bg-slate-900/60 border-b border-slate-800 flex items-center justify-between shrink-0">
                     <h1 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">{activeTab.replace('-', ' ')}</h1>
 
@@ -345,9 +442,8 @@ export default function TeacherView() {
                     </button>
                 </header>
 
-                {/* Workspace Content */}
                 <main className="flex-1 p-6 space-y-6 w-full overflow-y-auto">
-                    {/* --- TAB 1: OVERVIEW --- */}
+                    {/* TAB 1: OVERVIEW */}
                     {activeTab === 'overview' && (
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -396,14 +492,13 @@ export default function TeacherView() {
                         </div>
                     )}
 
-                    {/* --- TAB 2: ASSIGNMENTS (CREATE & LIST) --- */}
+                    {/* TAB 2: ASSIGNMENTS */}
                     {activeTab === 'assignments' && (
                         <div className="space-y-6">
-                            {/* Create Assignment Form */}
                             <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                                 <h3 className="text-xs font-semibold text-slate-200">Create New Assignment</h3>
                                 <form onSubmit={handleCreateAssignment} className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                         <div>
                                             <label className="block text-[11px] font-medium text-slate-400 mb-1">Title</label>
                                             <input
@@ -416,29 +511,38 @@ export default function TeacherView() {
                                             />
                                         </div>
 
-                                        {/* 🟢 Custom Beautified Target Class Select */}
                                         <div>
                                             <label className="block text-[11px] font-medium text-slate-400 mb-1">Target Class</label>
-                                            <div className="relative">
-                                                <select
-                                                    value={selectedClassId}
-                                                    onChange={(e) => setSelectedClassId(e.target.value)}
-                                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 pr-8 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 cursor-pointer appearance-none transition"
-                                                    required
-                                                >
-                                                    <option value="" className="bg-slate-900 text-slate-400">Select Class...</option>
-                                                    {myClasses.map((c) => (
-                                                        <option key={c.id} value={c.id} className="bg-slate-900 text-slate-200 py-1">
-                                                            {c.className} (Room: {c.roomNumber})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                </div>
-                                            </div>
+                                            <select
+                                                value={selectedClassId}
+                                                onChange={(e) => setSelectedClassId(e.target.value)}
+                                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                                                required
+                                            >
+                                                <option value="" className="bg-slate-900 text-slate-400">Select Class...</option>
+                                                {myClasses.map((c) => (
+                                                    <option key={c.id} value={c.id} className="bg-slate-900 text-slate-200">
+                                                        {c.className} (Room: {c.roomNumber})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[11px] font-medium text-slate-400 mb-1">Subject</label>
+                                            <select
+                                                value={selectedSubjectId}
+                                                onChange={(e) => setSelectedSubjectId(e.target.value)}
+                                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                                                required
+                                            >
+                                                <option value="" className="bg-slate-900 text-slate-400">Select Subject...</option>
+                                                {subjectList.map((s) => (
+                                                    <option key={s.id} value={s.id} className="bg-slate-900 text-slate-200">
+                                                        {s.subjectName} ({s.subjectCode})
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
                                     </div>
 
@@ -454,7 +558,6 @@ export default function TeacherView() {
                                         />
                                     </div>
 
-                                    {/* Dynamic Compact Bottom Bar */}
                                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
                                         <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
                                             <div className="w-28">
@@ -473,8 +576,14 @@ export default function TeacherView() {
                                                 <input
                                                     type="date"
                                                     value={newDueDate}
+                                                    min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
                                                     onChange={(e) => setNewDueDate(e.target.value)}
-                                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                                                    onClick={(e) => {
+                                                        if ('showPicker' in e.currentTarget) {
+                                                            e.currentTarget.showPicker();
+                                                        }
+                                                    }}
+                                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer [color-scheme:dark]"
                                                     required
                                                 />
                                             </div>
@@ -503,7 +612,6 @@ export default function TeacherView() {
                                 </form>
                             </div>
 
-                            {/* Created Assignments List */}
                             <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-3">
                                 <h3 className="text-xs font-semibold text-slate-200">Your Assignments ({assignments.length})</h3>
                                 <div className="overflow-x-auto rounded-lg border border-slate-800">
@@ -536,12 +644,34 @@ export default function TeacherView() {
                                                         </span>
                                                     </td>
                                                     <td className="p-3 text-right">
-                                                        <button
-                                                            onClick={() => handleDeleteAssignment(a)}
-                                                            className="px-2 py-1 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-[10px] font-medium rounded border border-rose-800/80 transition cursor-pointer"
-                                                        >
-                                                            Delete
-                                                        </button>
+                                                        <div className="flex justify-end items-center gap-2">
+
+                                                            {/* 🟢 NEW: Edit Button */}
+                                                            <button
+                                                                onClick={() => handleOpenEditAssignment(a)}
+                                                                className="px-2 py-1 bg-indigo-950/60 text-indigo-400 hover:bg-indigo-900 text-[10px] font-medium rounded border border-indigo-800/80 transition cursor-pointer"
+                                                            >
+                                                                Edit
+                                                            </button>
+
+                                                            {/* Publish Button */}
+                                                            {a.isDraft && (
+                                                                <button
+                                                                    onClick={() => handlePublishAssignment(a)}
+                                                                    className="px-2 py-1 bg-emerald-950/60 text-emerald-400 hover:bg-emerald-900 text-[10px] font-medium rounded border border-emerald-800/80 transition cursor-pointer"
+                                                                >
+                                                                    Publish
+                                                                </button>
+                                                            )}
+
+                                                            {/* Delete Button */}
+                                                            <button
+                                                                onClick={() => handleDeleteAssignment(a)}
+                                                                className="px-2 py-1 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-[10px] font-medium rounded border border-rose-800/80 transition cursor-pointer"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -559,7 +689,7 @@ export default function TeacherView() {
                         </div>
                     )}
 
-                    {/* --- TAB 3: SUBMISSIONS & GRADING --- */}
+                    {/* TAB 3: SUBMISSIONS & GRADING */}
                     {activeTab === 'submissions' && (
                         <div className="space-y-6">
                             <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
@@ -639,7 +769,7 @@ export default function TeacherView() {
                         </div>
                     )}
 
-                    {/* --- TAB 4: MY CLASSES --- */}
+                    {/* TAB 4: MY CLASSES */}
                     {activeTab === 'classes' && (
                         <div className="space-y-6">
                             <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
@@ -669,6 +799,147 @@ export default function TeacherView() {
                     )}
                 </main>
             </div>
+
+            {/* --- Edit Assignment Modal --- */}
+            {editingAssignment && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-2xl shadow-2xl space-y-4">
+                        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                            <div>
+                                <h3 className="text-xs font-semibold text-slate-200">Edit Assignment</h3>
+                                <p className="text-[10px] text-slate-400 mt-0.5">Update details for &quot;{editingAssignment.title}&quot;</p>
+                            </div>
+                            <button
+                                onClick={() => setEditingAssignment(null)}
+                                className="text-slate-400 hover:text-white text-sm cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateAssignment} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-[11px] font-medium text-slate-400 mb-1">Title</label>
+                                    <input
+                                        type="text"
+                                        value={editTitle}
+                                        onChange={(e) => setEditTitle(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] font-medium text-slate-400 mb-1">Target Class</label>
+                                    <select
+                                        value={editClassId}
+                                        onChange={(e) => setEditClassId(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                                        required
+                                    >
+                                        <option value="" className="bg-slate-900 text-slate-400">Re-Select Class...</option>
+                                        {myClasses.map((c) => (
+                                            <option key={c.id} value={c.id} className="bg-slate-900 text-slate-200">
+                                                {c.className} (Room: {c.roomNumber})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] font-medium text-slate-400 mb-1">Subject</label>
+                                    <select
+                                        value={editSubjectId}
+                                        onChange={(e) => setEditSubjectId(e.target.value)}
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                                        required
+                                    >
+                                        <option value="" className="bg-slate-900 text-slate-400">Re-Select Subject...</option>
+                                        {subjectList.map((s) => (
+                                            <option key={s.id} value={s.id} className="bg-slate-900 text-slate-200">
+                                                {s.subjectName} ({s.subjectCode})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-400 mb-1">Description / Instructions</label>
+                                <textarea
+                                    value={editDescription}
+                                    onChange={(e) => setEditDescription(e.target.value)}
+                                    rows={2}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
+                                <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                                    <div className="w-28">
+                                        <label className="block text-[11px] font-medium text-slate-400 mb-1">Total Marks</label>
+                                        <input
+                                            type="number"
+                                            value={editMarks}
+                                            onChange={(e) => setEditMarks(Number(e.target.value))}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="w-40">
+                                        <label className="block text-[11px] font-medium text-slate-400 mb-1">Due Date</label>
+                                        <input
+                                            type="date"
+                                            value={editDueDate}
+                                            min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                                            onChange={(e) => setEditDueDate(e.target.value)}
+                                            onClick={(e) => {
+                                                if ('showPicker' in e.currentTarget) {
+                                                    e.currentTarget.showPicker();
+                                                }
+                                            }}
+                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer scheme-dark"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center gap-2 pt-5">
+                                        <input
+                                            type="checkbox"
+                                            id="editDraftCheck"
+                                            checked={editIsDraft}
+                                            onChange={(e) => setEditIsDraft(e.target.checked)}
+                                            className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                                        />
+                                        <label htmlFor="editDraftCheck" className="text-xs text-slate-300 cursor-pointer select-none">
+                                            Save as Draft
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 self-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditingAssignment(null)}
+                                        className="px-3 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700 transition cursor-pointer font-medium"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-lg text-xs transition cursor-pointer shadow-md shadow-indigo-600/20"
+                                    >
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             {/* --- Grade Submission Modal --- */}
             {gradingSubmission && (

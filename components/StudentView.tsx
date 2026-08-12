@@ -53,8 +53,9 @@ export default function StudentView() {
     const [loading, setLoading] = useState<boolean>(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-    // --- Submit Assignment Modal State ---
+    // --- Submit & Edit Task Modal State ---
     const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+    const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
     const [filePathInput, setFilePathInput] = useState('');
     const [isSubmittingTask, setIsSubmittingTask] = useState(false);
 
@@ -102,6 +103,12 @@ export default function StudentView() {
         setFilePathInput('');
     };
 
+    // --- Open Edit Submission Modal ---
+    const handleOpenEditModal = (submission: Submission) => {
+        setEditingSubmission(submission);
+        setFilePathInput(submission.filePath);
+    };
+
     // --- Handle File/Task Submission ---
     const handleTaskSubmission = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -133,6 +140,28 @@ export default function StudentView() {
             fetchStudentData();
         } catch {
             showStatus('error', 'Failed to submit assignment. Try again.');
+        } finally {
+            setIsSubmittingTask(false);
+        }
+    };
+
+    // --- Handle Submission Update ---
+    const handleUpdateSubmission = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingSubmission || !filePathInput) return;
+
+        setIsSubmittingTask(true);
+        try {
+            await api.put(`/student/submissions/${editingSubmission.id}`, {
+                filePath: filePathInput,
+            });
+
+            showStatus('success', 'Submission link updated successfully!');
+            setEditingSubmission(null);
+            setFilePathInput('');
+            fetchStudentData();
+        } catch {
+            showStatus('error', 'Failed to update submission. Try again.');
         } finally {
             setIsSubmittingTask(false);
         }
@@ -395,7 +424,8 @@ export default function StudentView() {
                                                 <th className="p-3">Submitted At</th>
                                                 <th className="p-3">My File</th>
                                                 <th className="p-3">Grade Assigned</th>
-                                                <th className="p-3">Teacher Feedback</th>
+                                                <th className="p-3 text-slate-400 italic">Teacher Feedback</th>
+                                                <th className="p-3 text-right">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
@@ -422,11 +452,24 @@ export default function StudentView() {
                                                     <td className="p-3 text-slate-400 italic">
                                                         {s.teacherFeedback ? `"${s.teacherFeedback}"` : 'No feedback yet'}
                                                     </td>
+                                                    <td className="p-3 text-right">
+                                                        {/* 🟢 Edit button logic */}
+                                                        {s.markAssigned === null ? (
+                                                            <button
+                                                                onClick={() => handleOpenEditModal(s)}
+                                                                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-medium rounded transition cursor-pointer border border-slate-700"
+                                                            >
+                                                                Edit Link
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-[10px] text-slate-500 italic border border-transparent px-3 py-1">Graded</span>
+                                                        )}
+                                                    </td>
                                                 </tr>
                                             ))}
                                             {submissions.length === 0 && (
                                                 <tr>
-                                                    <td colSpan={5} className="p-4 text-center text-slate-500">
+                                                    <td colSpan={6} className="p-4 text-center text-slate-500">
                                                         You haven&apos;t submitted any assignments yet.
                                                     </td>
                                                 </tr>
@@ -507,6 +550,55 @@ export default function StudentView() {
                                     className="px-4 py-1.5 bg-violet-600 text-white rounded-md text-xs font-medium hover:bg-violet-500 transition cursor-pointer disabled:opacity-50"
                                 >
                                     {isSubmittingTask ? 'Uploading...' : 'Confirm Submission'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* --- Edit Submission Modal --- */}
+            {editingSubmission && (
+                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl w-full max-w-md shadow-2xl space-y-4">
+                        <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                            <div>
+                                <h3 className="text-xs font-semibold text-slate-200">Update Submission</h3>
+                                <p className="text-[10px] text-slate-400 mt-0.5">{editingSubmission.assignmentTitle}</p>
+                            </div>
+                            <button
+                                onClick={() => setEditingSubmission(null)}
+                                className="text-slate-400 hover:text-white text-sm cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <form onSubmit={handleUpdateSubmission} className="space-y-3">
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-400 mb-1">New File Link / Path</label>
+                                <input
+                                    type="text"
+                                    value={filePathInput}
+                                    onChange={(e) => setFilePathInput(e.target.value)}
+                                    placeholder="Paste your updated link here..."
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-violet-500"
+                                    required
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingSubmission(null)}
+                                    className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-md text-xs hover:bg-slate-700 transition cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmittingTask}
+                                    className="px-4 py-1.5 bg-violet-600 text-white rounded-md text-xs font-medium hover:bg-violet-500 transition cursor-pointer disabled:opacity-50"
+                                >
+                                    {isSubmittingTask ? 'Updating...' : 'Update Link'}
                                 </button>
                             </div>
                         </form>
