@@ -1,9 +1,12 @@
 ﻿using AcademicManagementSystem.Data;
+using AcademicManagementSystem.DTOs.Assign;
 using AcademicManagementSystem.DTOs.AssignmentDtos;
 using AcademicManagementSystem.DTOs.Class;
 using AcademicManagementSystem.DTOs.QueryDtos;
+using AcademicManagementSystem.DTOs.Student;
 using AcademicManagementSystem.DTOs.Subject;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
+using AcademicManagementSystem.DTOs.Teacher;
 using AcademicManagementSystem.DTOs.UserDtos;
 using AcademicManagementSystem.Interfaces;
 using AcademicManagementSystem.Models;
@@ -116,6 +119,94 @@ namespace AcademicManagementSystem.Services
                 .ToListAsync();
         }
 
+
+        public async Task<bool> UpdateTeacherAsync(Guid id, UpdateTeacherDto dto)
+        {
+            var teacher = await _context.Teachers
+                .Include(t => t.Classes)
+                .Include(t => t.Subjects)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (teacher == null) return false;
+
+            if (!string.IsNullOrWhiteSpace(dto.TeacherCode))
+            {
+                var existingTeacher = await _context.Teachers
+                    .FirstOrDefaultAsync(t => t.TeacherCode == dto.TeacherCode && t.Id != id);
+
+                if (existingTeacher != null)
+                {
+                    throw new Exception("This Teacher Code is already assigned to another teacher.");
+                }
+            }
+
+            teacher.TeacherCode = dto.TeacherCode;
+            teacher.Specialization = dto.Specialization;
+            teacher.UpdatedDate = DateTime.UtcNow;
+
+            teacher.Classes.Clear();
+            if (dto.ClassIds != null && dto.ClassIds.Any())
+            {
+                var selectedClasses = await _context.ClassDetails
+                    .Where(c => dto.ClassIds.Contains(c.Id))
+                    .ToListAsync();
+
+                foreach (var c in selectedClasses)
+                {
+                    teacher.Classes.Add(c);
+                }
+            }
+
+            teacher.Subjects.Clear();
+            if (dto.SubjectIds != null && dto.SubjectIds.Any())
+            {
+                var selectedSubjects = await _context.Subjects
+                    .Where(s => dto.SubjectIds.Contains(s.Id))
+                    .ToListAsync();
+
+                foreach (var s in selectedSubjects)
+                {
+                    teacher.Subjects.Add(s); 
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> UpdateStudentAsync(Guid id, UpdateStudentDto dto)
+        {
+            var student = await _context.Students.FindAsync(id);
+            if (student == null) return false;
+
+            if (!string.IsNullOrWhiteSpace(dto.RollNo) && dto.ClassDetailsId.HasValue)
+            {
+                var existingStudent = await _context.Students
+                    .FirstOrDefaultAsync(s => s.RollNo == dto.RollNo && s.ClassDetailsId == dto.ClassDetailsId && s.Id != id);
+
+                if (existingStudent != null)
+                {
+                    throw new Exception("This Roll Number is already assigned to another student in this class.");
+                }
+            }
+
+            student.RollNo = dto.RollNo;
+            student.Section = dto.Section;
+            student.ClassDetailsId = dto.ClassDetailsId;
+
+            if (Enum.TryParse<Models.Group>(dto.Group, true, out var groupEnum))
+                student.Group = groupEnum;
+            else if (string.IsNullOrWhiteSpace(dto.Group))
+                student.Group = null;
+
+            student.UpdatedDate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+
+
         public async Task<IEnumerable<object>> GetTeachersAsync()
         {
             return await _context.Teachers
@@ -128,6 +219,8 @@ namespace AcademicManagementSystem.Services
                 })
                 .ToListAsync();
         }
+
+
 
         public async Task<IEnumerable<object>> GetSubjectsAsync()
         {
@@ -360,6 +453,103 @@ namespace AcademicManagementSystem.Services
             }
             return false;
         }
+
+
+        public async Task<IEnumerable<TeacherDto>> GetAllTeachersDetailedAsync()
+        {
+            return await _context.Teachers
+                .Include(t => t.User)
+                .Include(t => t.Classes)
+                .Include(t => t.Subjects)
+                .Select(t => new TeacherDto
+                {
+                    Id = t.Id,
+                    UserId = t.UserId,
+                    FirstName = t.User != null ? t.User.FirstName : string.Empty,
+                    LastName = t.User != null ? t.User.LastName : string.Empty,
+                    Email = t.User != null ? t.User.Email : string.Empty,
+                    TeacherCode = t.TeacherCode,
+                    DateOfBirth = t.DateOfBirth,
+                    PhoneNumber = t.PhoneNumber,
+                    Address = t.Address,
+                    Qualification = t.Qualification,
+                    Specialization = t.Specialization,
+                    Experience = t.Experience,
+                    AssignedClasses = t.Classes.Select(c => c.ClassName).ToList(),
+                    AssignedSubjects = t.Subjects.Select(s => s.SubjectName).ToList()
+                }).ToListAsync();
+        }
+
+        public async Task<IEnumerable<StudentDto>> GetAllStudentsDetailedAsync()
+        {
+            return await _context.Students
+                .Include(s => s.User)
+                .Include(s => s.ClassDetails)
+                .Select(s => new StudentDto
+                {
+                    Id = s.Id,
+                    UserId = s.UserId,
+                    FirstName = s.User != null ? s.User.FirstName : string.Empty,
+                    LastName = s.User != null ? s.User.LastName : string.Empty,
+                    Email = s.User != null ? s.User.Email : string.Empty,
+                    RollNo = s.RollNo,
+                    Group = s.Group.HasValue ? s.Group.ToString()! : string.Empty,
+                    Section = s.Section,
+                    DateOfBirth = s.DateOfBirth,
+                    Address = s.Address,
+                    ParentContact = s.ParentContact,
+                    ClassDetailsId = s.ClassDetailsId,
+                    ClassName = s.ClassDetails != null ? s.ClassDetails.ClassName : string.Empty
+                }).ToListAsync();
+        }
+
+        public async Task<bool> AssignTeacherAllocationAsync(AssignTeacherAllocationDto dto)
+        {
+            var teacher = await _context.Teachers
+                .Include(t => t.Classes)
+                .Include(t => t.Subjects)
+                .FirstOrDefaultAsync(t => t.Id == dto.TeacherId);
+
+            var classDetails = await _context.ClassDetails
+                .Include(c => c.Subjects)
+                .FirstOrDefaultAsync(c => c.Id == dto.ClassId);
+
+            var subject = await _context.Subjects.FindAsync(dto.SubjectId);
+
+            if (teacher == null || classDetails == null || subject == null) return false;
+
+            if (!teacher.Classes.Any(c => c.Id == dto.ClassId))
+                teacher.Classes.Add(classDetails);
+
+            if (!teacher.Subjects.Any(s => s.Id == dto.SubjectId))
+                teacher.Subjects.Add(subject);
+
+            if (!classDetails.Subjects.Any(s => s.Id == dto.SubjectId))
+                classDetails.Subjects.Add(subject);
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> RemoveTeacherAllocationAsync(AssignTeacherAllocationDto dto)
+        {
+            var teacher = await _context.Teachers
+                .Include(t => t.Classes)
+                .Include(t => t.Subjects)
+                .FirstOrDefaultAsync(t => t.Id == dto.TeacherId);
+
+            if (teacher == null) return false;
+
+            var classToRemove = teacher.Classes.FirstOrDefault(c => c.Id == dto.ClassId);
+            if (classToRemove != null) teacher.Classes.Remove(classToRemove);
+
+            var subjectToRemove = teacher.Subjects.FirstOrDefault(s => s.Id == dto.SubjectId);
+            if (subjectToRemove != null) teacher.Subjects.Remove(subjectToRemove);
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
 
 
         public async Task<IEnumerable<AssignmentResponseDto>> GetAllAssignmentsAsync()

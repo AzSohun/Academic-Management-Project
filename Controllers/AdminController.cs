@@ -1,7 +1,9 @@
 ﻿using AcademicManagementSystem.DTOs.Assign;
 using AcademicManagementSystem.DTOs.Class;
 using AcademicManagementSystem.DTOs.QueryDtos;
+using AcademicManagementSystem.DTOs.Student;
 using AcademicManagementSystem.DTOs.Subject;
+using AcademicManagementSystem.DTOs.Teacher;
 using AcademicManagementSystem.DTOs.UserDtos;
 using AcademicManagementSystem.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -52,6 +54,22 @@ namespace AcademicManagementSystem.Controllers
             if (!res) return NotFound("User Not Found!");
             return Ok(new { message = "User role updated successfully." });
         }
+
+
+        [HttpPut("teachers/{id}")]
+        public async Task<IActionResult> UpdateTeacher(Guid id, [FromBody] UpdateTeacherDto dto)
+        {
+            var result = await _adminService.UpdateTeacherAsync(id, dto);
+            return result ? Ok(new { message = "Teacher updated successfully" }) : BadRequest(new { message = "Failed to update teacher" });
+        }
+
+        [HttpPut("students/{id}")]
+        public async Task<IActionResult> UpdateStudent(Guid id, [FromBody] UpdateStudentDto dto)
+        {
+            var result = await _adminService.UpdateStudentAsync(id, dto);
+            return result ? Ok(new { message = "Student updated successfully" }) : BadRequest(new { message = "Failed to update student" });
+        }
+
 
         [HttpDelete("users/{id}")]
         public async Task<IActionResult> SoftDeleteUser(Guid id)
@@ -182,6 +200,34 @@ namespace AcademicManagementSystem.Controllers
             var result = await _adminService.RemoveSubjectFromClassAsync(classId, subjectId);
             return result ? Ok("Removed successfully") : BadRequest("Failed to remove");
         }
+
+
+        [HttpGet("teachers-detailed")]
+        public async Task<IActionResult> GetTeachersDetailed()
+        {
+            return Ok(await _adminService.GetAllTeachersDetailedAsync());
+        }
+
+        [HttpGet("students-detailed")]
+        public async Task<IActionResult> GetStudentsDetailed()
+        {
+            return Ok(await _adminService.GetAllStudentsDetailedAsync());
+        }
+
+        [HttpPost("assign-teacher-allocation")]
+        public async Task<IActionResult> AssignTeacherAllocation([FromBody] AssignTeacherAllocationDto dto)
+        {
+            var result = await _adminService.AssignTeacherAllocationAsync(dto);
+            return result ? Ok(new { message = "Allocation assigned successfully" }) : BadRequest(new { message = "Failed to assign allocation" });
+        }
+
+        [HttpPost("remove-teacher-allocation")]
+        public async Task<IActionResult> RemoveTeacherAllocation([FromBody] AssignTeacherAllocationDto dto)
+        {
+            var result = await _adminService.RemoveTeacherAllocationAsync(dto);
+            return result ? Ok(new { message = "Allocation removed successfully" }) : BadRequest(new { message = "Failed to remove allocation" });
+        }
+
 
         [HttpGet("assignments")]
         public async Task<IActionResult> GetAllAssignments()
