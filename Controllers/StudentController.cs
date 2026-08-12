@@ -1,7 +1,7 @@
-﻿using AcademicManagementSystem.DTOs.SubmissionDtos;
+﻿using AcademicManagementSystem.DTOs.Student;
+using AcademicManagementSystem.DTOs.SubmissionDtos;
 using AcademicManagementSystem.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -20,6 +20,31 @@ namespace AcademicManagementSystem.Controllers
         }
 
         private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            var profile = await _studentService.GetMyProfileAsync(GetUserId());
+            if (profile == null) return NotFound(new { message = "Student profile not found." });
+
+            return Ok(new { data = profile });
+        }
+
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateStudentProfileDto dto)
+        {
+            try
+            {
+                var result = await _studentService.UpdateMyProfileAsync(GetUserId(), dto);
+                if (!result) return BadRequest(new { message = "Failed to update profile." });
+
+                return Ok(new { message = "Profile updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
 
         [HttpGet("my-class")]
         public async Task<IActionResult> GetMyClass()
@@ -45,7 +70,14 @@ namespace AcademicManagementSystem.Controllers
         [HttpPost("submissions")]
         public async Task<IActionResult> SubmitAssignment([FromBody] CreateSubmissionDto dto)
         {
-            return Ok(await _studentService.SubmitAssignmentAsync(GetUserId(), dto));
+            try
+            {
+                return Ok(await _studentService.SubmitAssignmentAsync(GetUserId(), dto));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpPut("submissions/{id}")]
