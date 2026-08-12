@@ -133,7 +133,7 @@ export default function LoginPage() {
                 {/* 🟢 Quick Login Roles Container */}
                 <div className="mb-6 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
                     <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 text-center mb-2">
-                        ⚡ Quick Login
+                        Quick Login
                     </span>
                     <div className="grid grid-cols-3 gap-2">
                         {QUICK_CREDENTIALS.map((quick) => (
