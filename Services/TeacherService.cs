@@ -2,6 +2,7 @@
 using AcademicManagementSystem.DTOs.AssignmentDtos;
 using AcademicManagementSystem.DTOs.Subject;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
+using AcademicManagementSystem.DTOs.Teacher;
 using AcademicManagementSystem.Interfaces;
 using AcademicManagementSystem.Models;
 using Microsoft.EntityFrameworkCore;
@@ -25,17 +26,89 @@ namespace AcademicManagementSystem.Services
                 .FirstOrDefaultAsync(t => t.UserId == userId);
         }
 
+
+
+        public async Task<TeacherProfileResponseDto?> GetMyProfileAsync(Guid userId)
+        {
+            var teacher = await _context.Teachers
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(t => t.UserId == userId);
+
+            if (teacher == null || teacher.User == null) return null;
+
+            return new TeacherProfileResponseDto
+            {
+                Id = teacher.Id,
+                FirstName = teacher.User.FirstName,
+                LastName = teacher.User.LastName,
+                Email = teacher.User.Email,
+                PhoneNumber = teacher.PhoneNumber ?? string.Empty,
+                Address = teacher.Address ?? string.Empty,
+                DateOfBirth = teacher.DateOfBirth,
+                Qualification = teacher.Qualification ?? string.Empty,
+                Experience = teacher.Experience ?? string.Empty,
+                TeacherCode = teacher.TeacherCode ?? string.Empty,
+                Specialization = teacher.Specialization ?? string.Empty
+            };
+        }
+
+        public async Task<bool> UpdateMyProfileAsync(Guid userId, UpdateTeacherProfileDto dto)
+        {
+            var teacher = await _context.Teachers
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(t => t.UserId == userId);
+
+            if (teacher == null || teacher.User == null) return false;
+
+            teacher.User.FirstName = dto.FirstName;
+            teacher.User.LastName = dto.LastName;
+
+            teacher.PhoneNumber = dto.PhoneNumber;
+            teacher.Address = dto.Address;
+            teacher.DateOfBirth = dto.DateOfBirth;
+            teacher.Qualification = dto.Qualification;
+            teacher.Experience = dto.Experience;
+            teacher.UpdatedDate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+
         public async Task<IEnumerable<object>> GetMyClassesAsync(Guid userId)
         {
-            var teacher = await GetTeacherByUserIdAsync(userId);
-            if (teacher == null) return Enumerable.Empty<object>();
+            var teacherExists = await _context.Teachers.AnyAsync(t => t.UserId == userId);
+            if (!teacherExists) return Enumerable.Empty<object>();
 
-            return teacher.Classes.Select(c => new
-            {
-                c.Id,
-                c.ClassName,
-                c.RoomNumber
-            });
+            return await _context.Teachers
+                .Where(t => t.UserId == userId)
+                .SelectMany(t => t.Classes.Select(c => new
+                {
+                    Id = c.Id,
+                    ClassName = c.ClassName,
+                    RoomNumber = c.RoomNumber,
+                    StudentCount = _context.Students.Count(s => s.ClassDetailsId == c.Id),
+                    Subjects = c.Subjects
+                        .Where(s => t.Subjects.Contains(s))
+                        .Select(s => new
+                        {
+                            Id = s.Id,
+                            SubjectName = s.SubjectName,
+                            SubjectCode = s.SubjectCode
+                        }).ToList(),
+
+                    Students = _context.Students
+                        .Where(s => s.ClassDetailsId == c.Id)
+                        .Select(s => new
+                        {
+                            Id = s.Id,
+                            FullName = s.User != null ? s.User.FirstName + " " + s.User.LastName : "Unknown Student",
+                            RollNo = s.RollNo,
+                            Email = s.User != null ? s.User.Email : string.Empty,
+                            Section = s.Section
+                        }).ToList()
+                }))
+                .ToListAsync();
         }
 
         public async Task<IEnumerable<SubjectResponseDto>> GetMySubjectsAsync(Guid userId)

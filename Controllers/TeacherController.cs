@@ -1,5 +1,6 @@
 ﻿using AcademicManagementSystem.DTOs.AssignmentDtos;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
+using AcademicManagementSystem.DTOs.Teacher;
 using AcademicManagementSystem.Interfaces;
 using AcademicManagementSystem.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -22,6 +23,37 @@ namespace AcademicManagementSystem.Controllers
         }
 
         private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetMyProfile()
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+            {
+                return Unauthorized(new { message = "Invalid user token." });
+            }
+
+            var profile = await _teacherService.GetMyProfileAsync(userId);
+            if (profile == null) return NotFound(new { message = "Teacher profile not found." });
+
+            return Ok(new { data = profile });
+        }
+
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateTeacherProfileDto dto)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
+            {
+                return Unauthorized(new { message = "Invalid user token." });
+            }
+
+            var result = await _teacherService.UpdateMyProfileAsync(userId, dto);
+            if (!result) return BadRequest(new { message = "Failed to update profile." });
+
+            return Ok(new { message = "Profile updated successfully." });
+        }
 
         [HttpGet("classes")]
         public async Task<IActionResult> GetMyClasses()

@@ -1,6 +1,7 @@
 ﻿using AcademicManagementSystem.DTOs.AssignmentDtos;
 using AcademicManagementSystem.DTOs.Subject;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
+using AcademicManagementSystem.DTOs.Teacher;
 using AcademicManagementSystem.Models;
 
 namespace AcademicManagementSystem.Interfaces
@@ -8,6 +9,9 @@ namespace AcademicManagementSystem.Interfaces
     public interface ITeacherService
     {
         Task<Teacher?> GetTeacherByUserIdAsync(Guid userId);
+
+        Task<TeacherProfileResponseDto?> GetMyProfileAsync(Guid userId);
+        Task<bool> UpdateMyProfileAsync(Guid userId, UpdateTeacherProfileDto dto);
 
         Task<IEnumerable<object>> GetMyClassesAsync(Guid userId);
 
