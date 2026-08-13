@@ -19,6 +19,10 @@ namespace AcademicManagementSystem.Tests
             return context;
         }
 
+
+        // ==========================================
+        // Test 1: Submit Assignment (Before Deadline)
+        // ==========================================
         [Fact]
         public async Task SubmitAssignmentAsync_WhenBeforeDeadline_ShouldSucceed()
         {
@@ -76,6 +80,10 @@ namespace AcademicManagementSystem.Tests
             Assert.Equal("https://github.com/my-submission", result.FilePath);
         }
 
+
+        // ==========================================
+        // Test 1: Submit Assignment (Before Deadline)
+        // ==========================================
         [Fact]
         public async Task SubmitAssignmentAsync_WhenPastDeadline_ShouldThrowException()
         {
@@ -129,6 +137,103 @@ namespace AcademicManagementSystem.Tests
 
             var exception = await Assert.ThrowsAsync<Exception>(() => service.SubmitAssignmentAsync(testUserId, dto));
             Assert.Contains("deadline for this assignment has passed", exception.Message);
+        }
+
+
+        // ==========================================
+        // Test 3: Update Submission (Before Deadline)
+        // ==========================================
+        [Fact]
+        public async Task UpdateSubmissionAsync_WhenBeforeDeadline_ShouldUpdateSuccessfully()
+        {
+            // Arrange
+            var dbName = Guid.NewGuid().ToString();
+            var dbContext = await GetDbContextAsync(dbName);
+
+            var testUserId = Guid.NewGuid();
+            var testStudentId = Guid.NewGuid();
+            var testAssignmentId = Guid.NewGuid();
+            var testSubmissionId = Guid.NewGuid();
+            var testClassId = Guid.NewGuid();
+
+            dbContext.Users.Add(new User { Id = testUserId, FirstName = "Test", LastName = "Student", Email = "student@test.com" });
+            dbContext.ClassDetails.Add(new ClassDetails { Id = testClassId, ClassName = "Class 10" });
+            dbContext.Students.Add(new Student { Id = testStudentId, UserId = testUserId, ClassDetailsId = testClassId });
+
+            dbContext.Assignments.Add(new Assignment
+            {
+                Id = testAssignmentId,
+                Title = "Update Test",
+                DueDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)), // Deadline in future
+                ClassDetailsId = testClassId
+            });
+
+            dbContext.Submissions.Add(new Submission
+            {
+                Id = testSubmissionId,
+                AssignmentId = testAssignmentId,
+                StudentId = testStudentId,
+                FilePath = "old-link.com"
+            });
+
+            await dbContext.SaveChangesAsync();
+            dbContext.ChangeTracker.Clear();
+
+            var service = new StudentService(dbContext);
+
+            // Act
+            var result = await service.UpdateSubmissionAsync(testUserId, testSubmissionId, "new-link.com");
+
+            // Assert
+            Assert.True(result);
+            var updatedSub = await dbContext.Submissions.FindAsync(testSubmissionId);
+            Assert.Equal("new-link.com", updatedSub!.FilePath);
+        }
+
+        // ==========================================
+        // Test 4: Update Submission (Past Deadline)
+        // ==========================================
+        [Fact]
+        public async Task UpdateSubmissionAsync_WhenPastDeadline_ShouldThrowException()
+        {
+            // Arrange
+            var dbName = Guid.NewGuid().ToString();
+            var dbContext = await GetDbContextAsync(dbName);
+
+            var testUserId = Guid.NewGuid();
+            var testStudentId = Guid.NewGuid();
+            var testAssignmentId = Guid.NewGuid();
+            var testSubmissionId = Guid.NewGuid();
+            var testClassId = Guid.NewGuid();
+
+            dbContext.Users.Add(new User { Id = testUserId, FirstName = "Test", LastName = "Student", Email = "student@test.com" });
+            dbContext.ClassDetails.Add(new ClassDetails { Id = testClassId, ClassName = "Class 10" });
+            dbContext.Students.Add(new Student { Id = testStudentId, UserId = testUserId, ClassDetailsId = testClassId });
+
+            dbContext.Assignments.Add(new Assignment
+            {
+                Id = testAssignmentId,
+                Title = "Late Update Test",
+                DueDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), // Deadline passed
+                ClassDetailsId = testClassId
+            });
+
+            dbContext.Submissions.Add(new Submission
+            {
+                Id = testSubmissionId,
+                AssignmentId = testAssignmentId,
+                StudentId = testStudentId,
+                FilePath = "old-link.com"
+            });
+
+            await dbContext.SaveChangesAsync();
+            dbContext.ChangeTracker.Clear();
+
+            var service = new StudentService(dbContext);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<Exception>(() => service.UpdateSubmissionAsync(testUserId, testSubmissionId, "new-link.com"));
+            Assert.Contains("deadline has passed", exception.Message);
         }
     }
 }
