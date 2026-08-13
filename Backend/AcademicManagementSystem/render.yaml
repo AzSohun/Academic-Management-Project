@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: ams-api
+    env: docker
+    region: oregon
+    plan: starter
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: PORT
+        value: "8080"
+      - key: DATABASE_URL
+        scope: all
+      - key: JWT_SECRET_KEY
+        scope: all
+      - key: FRONTEND_URL
+        scope: all
+      - key: CLOUDINARY_CLOUD_NAME
+        scope: all
+      - key: CLOUDINARY_API_KEY
+        scope: all
+      - key: CLOUDINARY_API_SECRET
+        scope: all

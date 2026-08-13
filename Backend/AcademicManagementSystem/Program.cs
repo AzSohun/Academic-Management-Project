@@ -27,7 +27,7 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
 });
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var securityKey = jwtSettings["SecretKey"];
+var securityKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? jwtSettings["SecretKey"];
 
 builder.Services.AddAuthentication(options =>
 {
@@ -36,7 +36,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false;
+    options.RequireHttpsMetadata = builder.Environment.IsProduction();
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -55,7 +55,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "https://localhost:3000")
+        var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:3000";
+        var allowedOrigins = frontendUrl.Split(';').Select(url => url.Trim()).ToArray();
+        
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -77,7 +80,12 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowFrontend"); 
 
 app.UseCookiePolicy(); 
-app.UseHttpsRedirection();
+
+// Only redirect to HTTPS in production if not behind a proxy
+if (app.Environment.IsProduction() && !app.Configuration.GetValue<bool>("IsBehindProxy"))
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
