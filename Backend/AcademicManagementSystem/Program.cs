@@ -27,7 +27,12 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
 });
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var securityKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? jwtSettings["SecretKey"];
+var securityKey = builder.Configuration["JWT_SECRET_KEY"] ?? jwtSettings["SecretKey"];
+
+if (string.IsNullOrEmpty(securityKey))
+{
+    throw new Exception("JWT Secret Key is missing or completely empty! Please check Render Environment Variables.");
+}
 
 builder.Services.AddAuthentication(options =>
 {
