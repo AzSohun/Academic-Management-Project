@@ -1,9 +1,9 @@
 'use client';
 
-import AdminView from '@/components/AdminView';
 import StudentView from '@/components/StudentView';
 import TeacherView from '@/components/TeacherView';
 import { useAuth } from '@/context/AuthContext';
+import Admin from './admin/page';
 
 const ROLE_STYLES = {
     Admin: { accent: 'bg-blue-500', text: 'text-blue-400', ring: 'ring-blue-500/30', glow: 'bg-blue-500/10' },
@@ -61,10 +61,17 @@ export default function DashboardPage() {
 
             {/* Main Full-Width Content View */}
             <main className="flex-1 w-full overflow-y-auto">
-                {role === 'Admin' && <AdminView />}
+                {role === 'Admin' && <Admin></Admin>}
                 {role === 'Teacher' && <TeacherView />}
                 {role === 'Student' && <StudentView />}
             </main>
+
+
+            {/* <main className="flex-1 w-full overflow-y-auto">
+                {role === 'Admin' && <AdminView />}
+                {role === 'Teacher' && <TeacherView />}
+                {role === 'Student' && <StudentView />}
+            </main> */}
         </div>
     );
 }
