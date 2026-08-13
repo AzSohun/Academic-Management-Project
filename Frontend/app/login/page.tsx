@@ -9,20 +9,20 @@ import Swal from "sweetalert2";
 const QUICK_CREDENTIALS = [
     {
         role: "Admin",
-        email: process.env.NEXT_PUBLIC_DEMO_ADMIN_EMAIL || "",
-        password: process.env.NEXT_PUBLIC_DEMO_ADMIN_PASSWORD || "",
+        email: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "",
+        password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "",
         badgeColor: "border-indigo-500/50 bg-indigo-950/40 text-indigo-300 hover:bg-indigo-600 hover:text-white"
     },
     {
         role: "Teacher",
-        email: process.env.NEXT_PUBLIC_DEMO_TEACHER_EMAIL || "",
-        password: process.env.NEXT_PUBLIC_DEMO_TEACHER_PASSWORD || "",
+        email: process.env.NEXT_PUBLIC_TEACHER_EMAIL || "",
+        password: process.env.NEXT_PUBLIC_TEACHER_PASSWORD || "",
         badgeColor: "border-purple-500/50 bg-purple-950/40 text-purple-300 hover:bg-purple-600 hover:text-white"
     },
     {
         role: "Student",
-        email: process.env.NEXT_PUBLIC_DEMO_STUDENT_EMAIL || "",
-        password: process.env.NEXT_PUBLIC_DEMO_STUDENT_PASSWORD || "",
+        email: process.env.NEXT_PUBLIC_STUDENT_EMAIL || "",
+        password: process.env.NEXT_PUBLIC_STUDENT_PASSWORD || "",
         badgeColor: "border-emerald-500/50 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-600 hover:text-white"
     }
 ];
