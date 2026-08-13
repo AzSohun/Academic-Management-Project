@@ -66,5 +66,4 @@ Follow the steps below to run the project locally on your machine:
 
 ### 1. Clone the Repository
 ```bash
-git clone [https://github.com/AzSohun/Academic-Management-Project.git](https://github.com/AzSohun/Academic-Management-Project.git)
-cd Academic-Management-Project
+git clone https://github.com/AzSohun/Academic-Management-Project.git
