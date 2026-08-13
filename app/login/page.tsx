@@ -130,7 +130,7 @@ export default function LoginPage() {
                     Sign in to continue to your dashboard
                 </p>
 
-                {/* 🟢 Quick Login Roles Container */}
+                {/* Quick Login Roles Container */}
                 <div className="mb-6 p-3 rounded-lg bg-slate-950/60 border border-slate-800">
                     <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 text-center mb-2">
                         Quick Login

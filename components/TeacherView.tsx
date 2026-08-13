@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import Swal from 'sweetalert2';
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 // --- Types ---
 interface AssignedSubject {
@@ -112,8 +113,26 @@ const Pagination = ({ totalItems, page, limit, onPageChange, onLimitChange }: { 
 };
 
 export default function TeacherView() {
-    const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'submissions' | 'classes' | 'profile'>('overview');
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+
+    const currentTab = (searchParams.get('tab') as any) || 'overview';
+    const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'submissions' | 'classes' | 'profile'>(currentTab);
+
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+    const handleTabChange = (tabId: string) => {
+        setActiveTab(tabId as any);
+        router.push(`${pathname}?tab=${tabId}`);
+    };
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab as any);
+        }
+    }, [searchParams]);
 
     const [myClasses, setMyClasses] = useState<MyClass[]>([]);
     const [subjectList, setSubjectList] = useState<Subject[]>([]);
@@ -367,7 +386,7 @@ export default function TeacherView() {
             // Refresh global data
             fetchTeacherData();
 
-            // 🟢 NEW: If grading from the specific assignment modal, refresh that modal's data too
+            // Refresh specific modal data
             if (viewingAssignmentSubmissions) {
                 const res = await api.get(`/teacher/assignments/${viewingAssignmentSubmissions.id}/submissions`);
                 setAssignmentSubmissionsList(extractArrayData(res));
@@ -410,7 +429,7 @@ export default function TeacherView() {
                         {navItems.map((item) => {
                             const active = activeTab === item.id;
                             return (
-                                <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer ${active ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
+                                <button key={item.id} onClick={() => handleTabChange(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer ${active ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
                                     <span>{item.icon}</span>
                                     {isSidebarOpen && <span className="truncate">{item.label}</span>}
                                     {isSidebarOpen && item.count !== undefined && <span className={`ml-auto px-2 py-0.5 rounded text-xs ${active ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400'}`}>{item.count}</span>}
@@ -459,11 +478,11 @@ export default function TeacherView() {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div onClick={() => setActiveTab('assignments')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-6 rounded-xl transition">
+                                <div onClick={() => handleTabChange('assignments')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-6 rounded-xl transition">
                                     <h3 className="font-semibold text-sm text-emerald-300">Create & Manage Assignments &rarr;</h3>
                                     <p className="text-sm text-slate-400 mt-2">Publish new assignments or edit deadlines for your classes.</p>
                                 </div>
-                                <div onClick={() => setActiveTab('submissions')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-6 rounded-xl transition">
+                                <div onClick={() => handleTabChange('submissions')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-6 rounded-xl transition">
                                     <h3 className="font-semibold text-sm text-amber-300">Grade Student Submissions &rarr;</h3>
                                     <p className="text-sm text-slate-400 mt-2">Evaluate uploaded homework, assign marks and provide direct feedback.</p>
                                 </div>
@@ -689,7 +708,7 @@ export default function TeacherView() {
                 </main>
             </div>
 
-            {/* Specific Assignment Submissions Modal */}
+            {/* 🟢 NEW: Specific Assignment Submissions Modal */}
             {viewingAssignmentSubmissions && (
                 <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">

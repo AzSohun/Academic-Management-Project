@@ -1,7 +1,7 @@
 'use client';
 import { api, setAccessToken } from "@/lib/api";
 import { LoginDto, SignUpDto } from "@/types/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import axios from "axios";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
@@ -47,7 +47,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<UserPayload | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
     const router = useRouter();
+    const pathname = usePathname();
 
     useEffect(() => {
         const initAuth = async () => {
@@ -72,6 +74,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
         initAuth();
     }, []);
+
+    useEffect(() => {
+        const publicPaths = ['/', '/login', '/signup'];
+
+        if (!isLoading && user && publicPaths.includes(pathname)) {
+            router.push("/dashboard");
+        }
+    }, [isLoading, user, pathname, router]);
 
     const login = async (credentials: LoginDto) => {
         const res = await api.post('/auth/login', credentials);

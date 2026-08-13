@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import Swal from 'sweetalert2';
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 // --- Types ---
 interface User {
@@ -126,7 +127,6 @@ const extractArrayData = (res: any) => {
     return [];
 };
 
-// 🟢 NEW: Reusable Pagination Component
 const Pagination = ({ totalItems, page, limit, onPageChange, onLimitChange }: { totalItems: number, page: number, limit: number, onPageChange: (p: number) => void, onLimitChange: (l: number) => void }) => {
     const totalPages = Math.max(Math.ceil(totalItems / limit), 1);
     return (
@@ -156,8 +156,27 @@ const Pagination = ({ totalItems, page, limit, onPageChange, onLimitChange }: { 
 
 export default function AdminView() {
     const { user: currentUser } = useAuth();
-    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'teachers' | 'students' | 'classes' | 'assignments'>('overview');
+
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+
+    const currentTab = (searchParams.get('tab') as any) || 'overview';
+    const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'teachers' | 'students' | 'classes' | 'assignments'>(currentTab);
+
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+    const handleTabChange = (tabId: string) => {
+        setActiveTab(tabId as any);
+        router.push(`${pathname}?tab=${tabId}`);
+    };
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab as any);
+        }
+    }, [searchParams]);
 
     const [usersResult, setUsersResult] = useState<QueryResultDto<User>>({
         items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0, hasPreviousPage: false, hasNextPage: false,
@@ -225,7 +244,7 @@ export default function AdminView() {
     const [editStudentClassId, setEditStudentClassId] = useState('');
     const [studentFormError, setStudentFormError] = useState('');
 
-    // 🟢 NEW: Pagination States for Client-Side Tables
+    // Pagination States for Client-Side Tables
     const [pageState, setPageState] = useState({
         teachers: { page: 1, limit: 10 },
         students: { page: 1, limit: 10 },
@@ -567,7 +586,7 @@ export default function AdminView() {
                         {navItems.map((item) => {
                             const active = activeTab === item.id;
                             return (
-                                <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer ${active ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
+                                <button key={item.id} onClick={() => handleTabChange(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer ${active ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
                                     <span>{item.icon}</span>
                                     {isSidebarOpen && <span className="truncate">{item.label}</span>}
                                     {isSidebarOpen && item.count !== undefined && <span className={`ml-auto px-1.5 py-0.5 rounded text-xs ${active ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'}`}>{item.count}</span>}
@@ -614,11 +633,11 @@ export default function AdminView() {
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div onClick={() => setActiveTab('users')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-5 rounded-xl transition">
+                                <div onClick={() => handleTabChange('users')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-5 rounded-xl transition">
                                     <h3 className="font-semibold text-sm text-indigo-300">User Allocations &rarr;</h3>
                                     <p className="text-xs text-slate-400 mt-1">Assign students to classes or link teachers to courses.</p>
                                 </div>
-                                <div onClick={() => setActiveTab('classes')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-5 rounded-xl transition">
+                                <div onClick={() => handleTabChange('classes')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-5 rounded-xl transition">
                                     <h3 className="font-semibold text-sm text-emerald-300">Classes & Subjects &rarr;</h3>
                                     <p className="text-xs text-slate-400 mt-1">Add new academic sections, room numbers and subject codes.</p>
                                 </div>
@@ -729,7 +748,6 @@ export default function AdminView() {
                                             })}
                                         </tbody>
                                     </table>
-                                    {/* Backend Paginated Table uses inline logic to retain specific server logic */}
                                     <Pagination
                                         totalItems={usersResult.totalCount}
                                         page={pageNumber}

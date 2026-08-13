@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import Swal from 'sweetalert2';
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 // --- Types ---
 interface Classmate {
@@ -101,8 +102,26 @@ const Pagination = ({ totalItems, page, limit, onPageChange, onLimitChange }: { 
 };
 
 export default function StudentView() {
-    const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'submissions' | 'my-class' | 'profile'>('overview');
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+
+    const currentTab = (searchParams.get('tab') as any) || 'overview';
+    const [activeTab, setActiveTab] = useState<'overview' | 'assignments' | 'submissions' | 'my-class' | 'profile'>(currentTab);
+
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+    const handleTabChange = (tabId: string) => {
+        setActiveTab(tabId as any);
+        router.push(`${pathname}?tab=${tabId}`);
+    };
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab as any);
+        }
+    }, [searchParams]);
 
     const [enrolledClass, setEnrolledClass] = useState<MyEnrolledClass | null>(null);
     const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -256,7 +275,6 @@ export default function StudentView() {
 
         setIsSubmittingTask(true);
         try {
-            // 🟢 FIXED: Backend expects newFilePath as a [FromQuery] parameter
             await api.put(`/student/submissions/${editingSubmission.id}?newFilePath=${encodeURIComponent(filePathInput)}`);
 
             showStatus('success', 'Submission link updated successfully!');
@@ -274,7 +292,7 @@ export default function StudentView() {
         { id: 'overview', label: 'Overview', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
         { id: 'assignments', label: 'Active Tasks', count: pendingAssignmentsCount > 0 ? pendingAssignmentsCount : undefined, icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> },
         { id: 'submissions', label: 'My Submissions & Grades', count: submissions.length, icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg> },
-        { id: 'my-class', label: 'My Enrolled Class', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2-2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
+        { id: 'my-class', label: 'My Enrolled Class', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg> },
         { id: 'profile', label: 'My Profile', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
     ];
 
@@ -305,7 +323,7 @@ export default function StudentView() {
                         {navItems.map((item) => {
                             const active = activeTab === item.id;
                             return (
-                                <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer ${active ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
+                                <button key={item.id} onClick={() => handleTabChange(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition cursor-pointer ${active ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}>
                                     <span>{item.icon}</span>
                                     {isSidebarOpen && <span className="truncate">{item.label}</span>}
                                     {isSidebarOpen && item.count !== undefined && <span className={`ml-auto px-2 py-0.5 rounded text-xs ${active ? 'bg-violet-500 text-white' : 'bg-slate-800 text-slate-400'}`}>{item.count}</span>}
@@ -353,11 +371,11 @@ export default function StudentView() {
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div onClick={() => setActiveTab('assignments')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-6 rounded-xl transition">
+                                <div onClick={() => handleTabChange('assignments')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-6 rounded-xl transition">
                                     <h3 className="font-semibold text-sm text-violet-300">View Active Assignments &rarr;</h3>
                                     <p className="text-sm text-slate-400 mt-2">Check pending homework due dates and submit your solutions.</p>
                                 </div>
-                                <div onClick={() => setActiveTab('submissions')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-6 rounded-xl transition">
+                                <div onClick={() => handleTabChange('submissions')} className="cursor-pointer bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-6 rounded-xl transition">
                                     <h3 className="font-semibold text-sm text-emerald-300">Check Marks & Feedback &rarr;</h3>
                                     <p className="text-sm text-slate-400 mt-2">Review assigned grades and comments left by your teachers.</p>
                                 </div>
@@ -436,7 +454,6 @@ export default function StudentView() {
                                             {paginateData(assignments, 'assignments').map((a) => {
                                                 const done = isSubmitted(a.id);
 
-                                                // 🟢 NEW: Frontend deadline check logic
                                                 const today = new Date();
                                                 today.setHours(0, 0, 0, 0);
                                                 const dueDateObj = new Date(a.dueDate);
@@ -500,7 +517,6 @@ export default function StudentView() {
                                         </thead>
                                         <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
                                             {paginateData(submissions, 'submissions').map((s) => {
-                                                // 🟢 Disable editing if past deadline
                                                 const relatedAssignment = assignments.find(a => a.id === s.assignmentId);
                                                 let isPastDeadline = false;
                                                 if (relatedAssignment) {
@@ -553,7 +569,6 @@ export default function StudentView() {
                         <div className="space-y-6">
                             {enrolledClass ? (
                                 <>
-                                    {/* Header Section */}
                                     <div className="bg-slate-900/60 border border-slate-800 p-8 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
                                         <div className="absolute top-0 left-0 w-1.5 h-full bg-violet-600"></div>
                                         <div>
@@ -569,7 +584,6 @@ export default function StudentView() {
                                     </div>
 
                                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                                        {/* Left Column: Subjects & Tasks */}
                                         <div className="xl:col-span-1 space-y-4">
                                             <h3 className="text-sm font-semibold text-slate-200">Enrolled Subjects</h3>
                                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
@@ -599,7 +613,6 @@ export default function StudentView() {
                                             </div>
                                         </div>
 
-                                        {/* Right Column: Classmates Table */}
                                         <div className="xl:col-span-2 space-y-4">
                                             <h3 className="text-sm font-semibold text-slate-200">Classmates Directory</h3>
                                             <div className="overflow-x-auto bg-slate-900/50 rounded-xl border border-slate-800 shadow-sm">
