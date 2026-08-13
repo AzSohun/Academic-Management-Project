@@ -323,6 +323,11 @@ namespace AcademicManagementSystem.Services
                 return false;
             }
 
+            if (dto.MarksAssigned > submission.Assignment.Marks)
+            {
+                throw new Exception($"Marks assigned ({dto.MarksAssigned}) cannot be greater than the maximum assignment marks ({submission.Assignment.Marks}).");
+            }
+
             submission.MarkAssigned = dto.MarksAssigned;
             submission.TeacherFeedback = dto.Feedback;
             submission.Status = dto.Status;
