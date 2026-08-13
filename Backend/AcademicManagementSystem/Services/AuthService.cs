@@ -156,7 +156,14 @@ namespace AcademicManagementSystem.Services
                 new Claim(ClaimTypes.Role, user.Role.ToString() ?? "Student"),
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"]!));
+            var secretKey = _configuration["JWT_SECRET_KEY"] ?? _configuration["Jwt:SecretKey"];
+
+            if (string.IsNullOrEmpty(secretKey))
+            {
+                throw new Exception("JWT Secret Key is missing in AuthService! Check Render variables.");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
