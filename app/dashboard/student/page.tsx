@@ -1,7 +1,7 @@
-import React from 'react'
+import StudentView from '@/views/StudentView';
 
 export default function Student() {
     return (
-        <div>Student</div>
+        <StudentView />
     )
 }

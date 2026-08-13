@@ -1,9 +1,9 @@
 'use client';
 
-import StudentView from '@/components/StudentView';
 import TeacherView from '@/components/TeacherView';
 import { useAuth } from '@/context/AuthContext';
 import Admin from './admin/page';
+import Student from './student/page';
 
 const ROLE_STYLES = {
     Admin: { accent: 'bg-blue-500', text: 'text-blue-400', ring: 'ring-blue-500/30', glow: 'bg-blue-500/10' },
@@ -20,7 +20,6 @@ export default function DashboardPage() {
 
     return (
         <div className="h-screen w-screen bg-[#080c14] text-slate-200 antialiased select-none flex flex-col overflow-hidden">
-            {/* Top Accent Line & Header */}
             <header className="relative border-b border-slate-800/80 bg-[#0d1322]/90 backdrop-blur-md shrink-0 z-30">
                 <div className={`absolute top-0 left-0 right-0 h-0.5 ${styles.accent}`} />
                 <div className="w-full px-6 py-2.5 flex justify-between items-center">
@@ -59,19 +58,12 @@ export default function DashboardPage() {
                 </div>
             </header>
 
-            {/* Main Full-Width Content View */}
+
             <main className="flex-1 w-full overflow-y-auto">
-                {role === 'Admin' && <Admin></Admin>}
+                {role === 'Admin' && <Admin />}
                 {role === 'Teacher' && <TeacherView />}
-                {role === 'Student' && <StudentView />}
+                {role === 'Student' && <Student />}
             </main>
-
-
-            {/* <main className="flex-1 w-full overflow-y-auto">
-                {role === 'Admin' && <AdminView />}
-                {role === 'Teacher' && <TeacherView />}
-                {role === 'Student' && <StudentView />}
-            </main> */}
         </div>
     );
 }
