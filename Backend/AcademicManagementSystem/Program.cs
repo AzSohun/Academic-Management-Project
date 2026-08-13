@@ -57,7 +57,7 @@ builder.Services.AddCors(options =>
     {
         var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:3000";
         var allowedOrigins = frontendUrl.Split(';').Select(url => url.Trim()).ToArray();
-        
+
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
@@ -77,9 +77,8 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
-app.UseCors("AllowFrontend"); 
-
-app.UseCookiePolicy(); 
+app.UseCors("AllowFrontend");
+app.UseCookiePolicy();
 
 // Only redirect to HTTPS in production if not behind a proxy
 if (app.Environment.IsProduction() && !app.Configuration.GetValue<bool>("IsBehindProxy"))
@@ -89,7 +88,22 @@ if (app.Environment.IsProduction() && !app.Configuration.GetValue<bool>("IsBehin
 
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
+
+// Apply pending migrations automatically on startup
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the database.");
+    }
+}
 
 app.Run();
