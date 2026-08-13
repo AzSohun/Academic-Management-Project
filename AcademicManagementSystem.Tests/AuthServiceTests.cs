@@ -10,7 +10,6 @@ namespace AcademicManagementSystem.Tests
 {
     public class AuthServiceTests
     {
-        // ইন-মেমোরি ডাটাবেস সেটআপ
         private async Task<AppDbContext> GetDbContextAsync(string dbName)
         {
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -21,7 +20,6 @@ namespace AcademicManagementSystem.Tests
             return context;
         }
 
-        // JWT এর জন্য মক কনফিগারেশন সেটআপ
         private IConfiguration GetConfiguration()
         {
             var inMemorySettings = new Dictionary<string, string> {
@@ -74,7 +72,7 @@ namespace AcademicManagementSystem.Tests
             Assert.NotEmpty(result.RefreshToken);
 
             var userInDb = await dbContext.Users.FindAsync(testUserId);
-            Assert.NotNull(userInDb?.RefreshToken); // রিফ্রেশ টোকেন ডাটাবেসে সেভ হয়েছে কি না চেক
+            Assert.NotNull(userInDb?.RefreshToken);
         }
 
         // ==========================================
@@ -119,8 +117,6 @@ namespace AcademicManagementSystem.Tests
             var dbName = Guid.NewGuid().ToString();
             var dbContext = await GetDbContextAsync(dbName);
             var configuration = GetConfiguration();
-
-            // ডাটাবেস একদম ফাঁকা রাখা হলো
 
             var service = new AuthService(dbContext, configuration);
             var loginDto = new LoginDto { Email = "notfound@user.com", Password = "AnyPassword123" };
