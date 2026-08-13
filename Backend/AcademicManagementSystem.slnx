@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AcademicManagementSystem.Tests/AcademicManagementSystem.Tests.csproj" Id="8f710bf6-ad10-406c-afd3-d432d72ca19a" />
+  <Project Path="AcademicManagementSystem/AcademicManagementSystem.csproj" />
+</Solution>
