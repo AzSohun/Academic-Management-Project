@@ -36,12 +36,23 @@ namespace AcademicManagementSystem.Controllers
             => Ok(await _adminService.GetClassesAsync());
 
         [HttpGet("students")]
-        public async Task<IActionResult> GetStudents()
-            => Ok(await _adminService.GetStudentsAsync());
+        public async Task<IActionResult> GetStudents(
+            [FromQuery] string? search,
+            [FromQuery] string? className,
+            [FromQuery] string? section)
+        {
+            var students = await _adminService.GetStudentsAsync(search, className, section);
+            return Ok(students);
+        }
 
         [HttpGet("teachers")]
-        public async Task<IActionResult> GetTeachers()
-            => Ok(await _adminService.GetTeachersAsync());
+        public async Task<IActionResult> GetTeachers(
+            [FromQuery] string? search,
+            [FromQuery] string? specialization)
+        {
+            var teachers = await _adminService.GetTeachersAsync(search, specialization);
+            return Ok(teachers);
+        }
 
         [HttpGet("subjects")]
         public async Task<IActionResult> GetSubjects()
@@ -54,7 +65,6 @@ namespace AcademicManagementSystem.Controllers
             if (!res) return NotFound("User Not Found!");
             return Ok(new { message = "User role updated successfully." });
         }
-
 
         [HttpPut("teachers/{id}")]
         public async Task<IActionResult> UpdateTeacher(Guid id, [FromBody] UpdateTeacherDto dto)
@@ -69,7 +79,6 @@ namespace AcademicManagementSystem.Controllers
             var result = await _adminService.UpdateStudentAsync(id, dto);
             return result ? Ok(new { message = "Student updated successfully" }) : BadRequest(new { message = "Failed to update student" });
         }
-
 
         [HttpDelete("users/{id}")]
         public async Task<IActionResult> SoftDeleteUser(Guid id)
@@ -201,7 +210,6 @@ namespace AcademicManagementSystem.Controllers
             return result ? Ok("Removed successfully") : BadRequest("Failed to remove");
         }
 
-
         [HttpGet("teachers-detailed")]
         public async Task<IActionResult> GetTeachersDetailed()
         {
@@ -227,7 +235,6 @@ namespace AcademicManagementSystem.Controllers
             var result = await _adminService.RemoveTeacherAllocationAsync(dto);
             return result ? Ok(new { message = "Allocation removed successfully" }) : BadRequest(new { message = "Failed to remove allocation" });
         }
-
 
         [HttpGet("assignments")]
         public async Task<IActionResult> GetAllAssignments()

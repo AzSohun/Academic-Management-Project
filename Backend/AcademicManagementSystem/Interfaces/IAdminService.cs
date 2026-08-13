@@ -13,12 +13,12 @@ namespace AcademicManagementSystem.Interfaces
 {
     public interface IAdminService
     {
-        Task<IEnumerable<object>> GetClassesAsync();
+        Task<IEnumerable<ClassResponseDto>> GetClassesAsync();
         Task<QueryResultDto<UserDto>> GetAllUsersAsync(UserQueryParameterDto queryParams);
-        Task<IEnumerable<object>> GetStudentsAsync();
+        Task<IEnumerable<StudentDto>> GetStudentsAsync(string? search = null, string? className = null, string? section = null);
+        Task<IEnumerable<TeacherDto>> GetTeachersAsync(string? search = null, string? specialization = null);
         Task<bool> UpdateTeacherAsync(Guid id, UpdateTeacherDto dto);
-        Task<IEnumerable<object>> GetTeachersAsync();
-        Task<IEnumerable<object>> GetSubjectsAsync();
+        Task<IEnumerable<SubjectResponseDto>> GetSubjectsAsync();
         Task<bool> UpdateStudentAsync(Guid id, UpdateStudentDto dto);
         Task<bool> UpdateUserRoleAsync(Guid id, DTOs.UserDtos.Role newRole);
         Task<bool> SoftDeleteUserAsync(Guid targetUserId, Guid currentUserId);

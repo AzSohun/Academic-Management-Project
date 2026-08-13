@@ -93,32 +93,54 @@ namespace AcademicManagementSystem.Services
             };
         }
 
-        public async Task<IEnumerable<object>> GetClassesAsync()
+        public async Task<IEnumerable<ClassResponseDto>> GetClassesAsync()
         {
             return await _context.ClassDetails
-                .Select(c => new
+                .Select(c => new ClassResponseDto
                 {
-                    c.Id,
-                    c.ClassName,
-                    c.RoomNumber
+                    Id = c.Id,
+                    ClassName = c.ClassName,
+                    RoomNumber = c.RoomNumber
                 })
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<object>> GetStudentsAsync()
+        public async Task<IEnumerable<StudentDto>> GetStudentsAsync(string? search = null, string? className = null, string? section = null)
         {
-            return await _context.Students
+            var query = _context.Students
                 .Include(s => s.User)
-                .Where(s => s.ClassDetailsId == null)
-                .Select(s => new
-                {
-                    s.Id,
-                    FullName = s.User != null ? $"{s.User.FirstName} {s.User.LastName}" : "Unknown Student",
-                    Email = s.User != null ? s.User.Email : string.Empty
-                })
-                .ToListAsync();
-        }
+                .Include(s => s.ClassDetails)
+                .AsQueryable();
 
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(s => s.User!.FirstName.Contains(search) ||
+                                     s.User!.LastName.Contains(search) ||
+                                     s.RollNo.Contains(search));
+            }
+
+            if (!string.IsNullOrWhiteSpace(className) && className != "All")
+            {
+                query = query.Where(s => s.ClassDetails!.ClassName == className);
+            }
+
+            if (!string.IsNullOrWhiteSpace(section) && section != "All")
+            {
+                query = query.Where(s => s.Section == section);
+            }
+
+            return await query.Select(s => new StudentDto
+            {
+                Id = s.Id,
+                UserId = s.UserId,
+                FirstName = s.User != null ? s.User.FirstName : string.Empty,
+                LastName = s.User != null ? s.User.LastName : string.Empty,
+                Email = s.User != null ? s.User.Email : string.Empty,
+                RollNo = s.RollNo,
+                ClassName = s.ClassDetails != null ? s.ClassDetails.ClassName : string.Empty,
+                Section = s.Section
+            }).ToListAsync();
+        }
 
         public async Task<bool> UpdateTeacherAsync(Guid id, UpdateTeacherDto dto)
         {
@@ -166,7 +188,7 @@ namespace AcademicManagementSystem.Services
 
                 foreach (var s in selectedSubjects)
                 {
-                    teacher.Subjects.Add(s); 
+                    teacher.Subjects.Add(s);
                 }
             }
 
@@ -205,32 +227,49 @@ namespace AcademicManagementSystem.Services
             return true;
         }
 
-
-
-        public async Task<IEnumerable<object>> GetTeachersAsync()
+        public async Task<IEnumerable<TeacherDto>> GetTeachersAsync(string? search = null, string? specialization = null)
         {
-            return await _context.Teachers
+            var query = _context.Teachers
                 .Include(t => t.User)
-                .Select(t => new
-                {
-                    t.Id,
-                    FullName = t.User != null ? $"{t.User.FirstName} {t.User.LastName}" : "Unknown Teacher",
-                    Specialization = t.Specialization ?? "Teacher"
-                })
-                .ToListAsync();
+                .Include(t => t.Classes)
+                .Include(t => t.Subjects)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                query = query.Where(t => t.User!.FirstName.Contains(search) ||
+                                     t.User!.LastName.Contains(search) ||
+                                     t.TeacherCode.Contains(search));
+            }
+
+            if (!string.IsNullOrWhiteSpace(specialization) && specialization != "All")
+            {
+                query = query.Where(t => t.Specialization == specialization);
+            }
+
+            return await query.Select(t => new TeacherDto
+            {
+                Id = t.Id,
+                UserId = t.UserId,
+                FirstName = t.User != null ? t.User.FirstName : string.Empty,
+                LastName = t.User != null ? t.User.LastName : string.Empty,
+                Email = t.User != null ? t.User.Email : string.Empty,
+                TeacherCode = t.TeacherCode,
+                Specialization = t.Specialization ?? "General",
+                AssignedClasses = t.Classes.Select(c => c.ClassName).ToList(),
+                AssignedSubjects = t.Subjects.Select(s => s.SubjectName).ToList()
+            }).ToListAsync();
         }
 
-
-
-        public async Task<IEnumerable<object>> GetSubjectsAsync()
+        public async Task<IEnumerable<SubjectResponseDto>> GetSubjectsAsync()
         {
             return await _context.Subjects
-                .Select(s => new
+                .Select(s => new SubjectResponseDto
                 {
-                    s.Id,
-                    s.SubjectName,
-                    s.SubjectCode,
-                    s.SubjectDescription
+                    Id = s.Id,
+                    SubjectName = s.SubjectName,
+                    SubjectCode = s.SubjectCode,
+                    SubjectDescription = s.SubjectDescription
                 })
                 .ToListAsync();
         }
@@ -395,7 +434,6 @@ namespace AcademicManagementSystem.Services
             return true;
         }
 
-
         public async Task<bool> AssignSubjectToTeacherAsync(Guid teacherId, Guid subjectId)
         {
             var teacher = await _context.Teachers.Include(t => t.Subjects).FirstOrDefaultAsync(t => t.Id == teacherId);
@@ -453,7 +491,6 @@ namespace AcademicManagementSystem.Services
             }
             return false;
         }
-
 
         public async Task<IEnumerable<TeacherDto>> GetAllTeachersDetailedAsync()
         {
@@ -549,8 +586,6 @@ namespace AcademicManagementSystem.Services
             await _context.SaveChangesAsync();
             return true;
         }
-
-
 
         public async Task<IEnumerable<AssignmentResponseDto>> GetAllAssignmentsAsync()
         {
