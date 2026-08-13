@@ -1,15 +1,15 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy project file
-COPY ["AcademicManagementSystem/AcademicManagementSystem.csproj", "AcademicManagementSystem/"]
-RUN dotnet restore "AcademicManagementSystem/AcademicManagementSystem.csproj"
+# Copy project file - build context is AMS-Project root
+COPY ["Backend/AcademicManagementSystem/AcademicManagementSystem.csproj", "Backend/AcademicManagementSystem/"]
+RUN dotnet restore "Backend/AcademicManagementSystem/AcademicManagementSystem.csproj"
 
 # Copy source code
 COPY . .
 
 # Publish
-RUN dotnet publish "AcademicManagementSystem/AcademicManagementSystem.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "Backend/AcademicManagementSystem/AcademicManagementSystem.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app

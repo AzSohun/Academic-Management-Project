@@ -2,7 +2,7 @@ services:
   - type: web
     name: ams-api
     env: docker
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./Backend/Dockerfile
     region: oregon
     plan: starter
     autoDeploy: true
