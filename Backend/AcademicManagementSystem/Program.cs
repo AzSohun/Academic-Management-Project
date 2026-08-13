@@ -3,7 +3,6 @@ using AcademicManagementSystem.Interfaces;
 using AcademicManagementSystem.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
@@ -37,8 +36,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-
-    options.RequireHttpsMetadata = false;
+    options.RequireHttpsMetadata = builder.Environment.IsProduction();
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -53,22 +51,14 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
-
-        var allowedOrigins = new List<string> { "http://localhost:3000" };
-
-        if (!string.IsNullOrWhiteSpace(frontendUrl))
-        {
-            allowedOrigins.AddRange(frontendUrl.Split(';').Select(url => url.Trim()));
-        }
-
-        policy.WithOrigins(allowedOrigins.ToArray())
+        var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:3000";
+        var allowedOrigins = frontendUrl.Split(';').Select(url => url.Trim()).ToArray();
+        
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -78,26 +68,18 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// Configure Forwarded Headers for Render
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
-{
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-});
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-app.UseForwardedHeaders();
-
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
 
-app.UseCors("AllowFrontend");
+app.UseCors("AllowFrontend"); 
 
-app.UseCookiePolicy();
+app.UseCookiePolicy(); 
 
 // Only redirect to HTTPS in production if not behind a proxy
 if (app.Environment.IsProduction() && !app.Configuration.GetValue<bool>("IsBehindProxy"))
