@@ -1,7 +1,8 @@
-import React from 'react'
+import TeacherView from '@/views/TeacherView';
+
 
 export default function Teacher() {
     return (
-        <div>Teacher</div>
+        <TeacherView />
     )
 }

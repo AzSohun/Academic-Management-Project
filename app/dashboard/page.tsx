@@ -1,9 +1,9 @@
 'use client';
 
-import TeacherView from '@/components/TeacherView';
 import { useAuth } from '@/context/AuthContext';
 import Admin from './admin/page';
 import Student from './student/page';
+import Teacher from './teacher/page';
 
 const ROLE_STYLES = {
     Admin: { accent: 'bg-blue-500', text: 'text-blue-400', ring: 'ring-blue-500/30', glow: 'bg-blue-500/10' },
@@ -61,7 +61,7 @@ export default function DashboardPage() {
 
             <main className="flex-1 w-full overflow-y-auto">
                 {role === 'Admin' && <Admin />}
-                {role === 'Teacher' && <TeacherView />}
+                {role === 'Teacher' && <Teacher />}
                 {role === 'Student' && <Student />}
             </main>
         </div>
