@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { api } from '@/lib/api';
 import Swal from 'sweetalert2';
@@ -13,9 +15,11 @@ interface SubmitTaskProps {
 export default function SubmitTask({ assignment, onClose, onSuccess, showStatus }: SubmitTaskProps) {
     const [filePathInput, setFilePathInput] = useState('');
     const [isSubmittingTask, setIsSubmittingTask] = useState(false);
+    const [inlineMsg, setInlineMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
     const handleTaskSubmission = async (e: React.FormEvent) => {
         e.preventDefault();
+        setInlineMsg(null);
         if (!filePathInput) return;
 
         setIsSubmittingTask(true);
@@ -25,19 +29,30 @@ export default function SubmitTask({ assignment, onClose, onSuccess, showStatus 
                 filePath: filePathInput,
             });
 
-            Swal.fire({
-                title: 'Submitted!',
-                text: `Your response for "${assignment.title}" was uploaded successfully.`,
-                icon: 'success',
-                background: '#0f172a',
-                color: '#f8fafc',
-                confirmButtonColor: '#7c3aed',
-                customClass: { popup: 'border border-slate-800 rounded-xl', title: 'text-sm font-bold text-white', htmlContainer: 'text-xs text-slate-400' }
-            });
+            setInlineMsg({ text: 'Submission processed successfully!', type: 'success' });
 
-            onSuccess();
+            setTimeout(() => {
+                Swal.fire({
+                    title: 'Submitted!',
+                    text: `Your response for "${assignment.title}" was uploaded successfully.`,
+                    icon: 'success',
+                    background: '#0f172a',
+                    color: '#f8fafc',
+                    confirmButtonColor: '#7c3aed',
+                    customClass: { popup: 'border border-slate-800 rounded-xl', title: 'text-sm font-bold text-white', htmlContainer: 'text-xs text-slate-400' }
+                });
+                onSuccess();
+            }, 500);
+
         } catch (err: any) {
-            showStatus('error', err.response?.data?.message || 'Failed to submit assignment. Try again.');
+            // ৪ লেয়ারের এরর এক্সট্রাকশন লজিক
+            const errorMessage = err.response?.data?.message
+                || err.response?.data?.detail
+                || err.response?.data?.title
+                || (typeof err.response?.data === 'string' ? err.response.data : null)
+                || 'Failed to submit assignment. Try again.';
+
+            setInlineMsg({ text: errorMessage, type: 'error' });
         } finally {
             setIsSubmittingTask(false);
         }
@@ -65,8 +80,16 @@ export default function SubmitTask({ assignment, onClose, onSuccess, showStatus 
                             required
                         />
                     </div>
+
+                    {/* ইনলাইন মেসেজ দেখানোর সুন্দর বক্স */}
+                    {inlineMsg && (
+                        <div className={`p-2.5 rounded-lg text-xs font-medium border ${inlineMsg.type === 'error' ? 'bg-rose-950/40 text-rose-400 border-rose-800/60' : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'}`}>
+                            {inlineMsg.type === 'error' ? '⚠ ' : '✓ '} {inlineMsg.text}
+                        </div>
+                    )}
+
                     <div className="flex justify-end gap-3 pt-2 border-t border-slate-800">
-                        <button type="button" onClick={onClose} className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition cursor-pointer font-medium mt-3">Cancel</button>
+                        <button type="button" onClick={onClose} disabled={isSubmittingTask} className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition cursor-pointer font-medium mt-3 disabled:opacity-50">Cancel</button>
                         <button type="submit" disabled={isSubmittingTask} className="px-5 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-500 transition cursor-pointer disabled:opacity-50 mt-3 shadow-md shadow-violet-600/20">
                             {isSubmittingTask ? 'Uploading...' : 'Confirm Submission'}
                         </button>

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { api } from '@/lib/api';
 import { Submission } from '@/interfaces/student';
@@ -12,18 +14,35 @@ interface EditSubmissionProps {
 export default function EditSubmission({ submission, onClose, onSuccess, showStatus }: EditSubmissionProps) {
     const [filePathInput, setFilePathInput] = useState(submission.filePath);
     const [isSubmittingTask, setIsSubmittingTask] = useState(false);
+    const [inlineMsg, setInlineMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
     const handleUpdateSubmission = async (e: React.FormEvent) => {
         e.preventDefault();
+        setInlineMsg(null);
         if (!filePathInput) return;
 
         setIsSubmittingTask(true);
         try {
             await api.put(`/student/submissions/${submission.id}?newFilePath=${encodeURIComponent(filePathInput)}`);
+
+            setInlineMsg({ text: 'Submission link updated successfully!', type: 'success' });
             showStatus('success', 'Submission link updated successfully!');
-            onSuccess();
+
+            // একটু সময় নিয়ে মডালটা বন্ধ হবে যাতে ইউজার সাকসেস মেসেজটা দেখতে পায়
+            setTimeout(() => {
+                onSuccess();
+                onClose();
+            }, 1000);
+
         } catch (err: any) {
-            showStatus('error', err.response?.data?.message || 'Failed to update submission. Try again.');
+            // ৪ লেয়ারের এরর এক্সট্রাকশন লজিক
+            const errorMessage = err.response?.data?.message
+                || err.response?.data?.detail
+                || err.response?.data?.title
+                || (typeof err.response?.data === 'string' ? err.response.data : null)
+                || 'Failed to update submission. Try again.';
+
+            setInlineMsg({ text: errorMessage, type: 'error' });
         } finally {
             setIsSubmittingTask(false);
         }
@@ -51,9 +70,28 @@ export default function EditSubmission({ submission, onClose, onSuccess, showSta
                             required
                         />
                     </div>
+
+                    {/* ইনলাইন মেসেজ দেখানোর সুন্দর বক্স */}
+                    {inlineMsg && (
+                        <div className={`p-2.5 rounded-lg text-xs font-medium border ${inlineMsg.type === 'error' ? 'bg-rose-950/40 text-rose-400 border-rose-800/60' : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'}`}>
+                            {inlineMsg.type === 'error' ? '⚠ ' : '✓ '} {inlineMsg.text}
+                        </div>
+                    )}
+
                     <div className="flex justify-end gap-3 pt-2 border-t border-slate-800">
-                        <button type="button" onClick={onClose} className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition cursor-pointer font-medium mt-3">Cancel</button>
-                        <button type="submit" disabled={isSubmittingTask} className="px-5 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-500 transition cursor-pointer disabled:opacity-50 mt-3 shadow-md shadow-violet-600/20">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isSubmittingTask}
+                            className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition cursor-pointer font-medium mt-3 disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSubmittingTask}
+                            className="px-5 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-500 transition cursor-pointer disabled:opacity-50 mt-3 shadow-md shadow-violet-600/20"
+                        >
                             {isSubmittingTask ? 'Updating...' : 'Update Link'}
                         </button>
                     </div>
