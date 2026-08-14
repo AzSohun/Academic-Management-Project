@@ -534,6 +534,7 @@ namespace AcademicManagementSystem.Services
             return await _context.Students
                 .Include(s => s.User)
                 .Include(s => s.ClassDetails)
+                .Where(s => s.User != null && s.User.Role == Models.Role.Student)
                 .Select(s => new StudentDto
                 {
                     Id = s.Id,
