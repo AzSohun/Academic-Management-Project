@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const refreshToken = request.cookies.get('refreshToken')?.value;
     const publicPaths = ['/', '/login', '/signup'];
     const isPublicPath = publicPaths.includes(request.nextUrl.pathname);
