@@ -311,21 +311,21 @@ namespace AcademicManagementSystem.Services
 
         public async Task<ClassDetails> CreateClassAsync(CreateClassDto dto)
         {
+            // 1. Check if exact Class + Section already exists
             var isClassSectionExist = await _context.ClassDetails.FirstOrDefaultAsync(c =>
                 c.ClassName == dto.ClassName && c.Section == dto.Section);
 
             if (isClassSectionExist != null)
             {
                 var sectionName = string.IsNullOrWhiteSpace(dto.Section) ? "No Section" : dto.Section;
-                throw new Exception($"Class {dto.ClassName} with '{sectionName}' already exists.");
+                throw new Exception($"Class {dto.ClassName} with Section '{sectionName}' already exists.");
             }
 
-            var isRoomTaken = await _context.ClassDetails.FirstOrDefaultAsync(c => c.RoomNumber == dto.RoomNumber);
-
-            if (isRoomTaken != null)
+            // 2. Strict Room Check: Room number kokhono-i onno kono class/section er sathe match korte parbe na
+            var existingRoom = await _context.ClassDetails.FirstOrDefaultAsync(c => c.RoomNumber == dto.RoomNumber);
+            if (existingRoom != null)
             {
-                var occupantSection = string.IsNullOrWhiteSpace(isRoomTaken.Section) ? "" : $" ({isRoomTaken.Section})";
-                throw new Exception($"Room number {dto.RoomNumber} is already occupied by Class {isRoomTaken.ClassName}{occupantSection}.");
+                throw new Exception($"Room number {dto.RoomNumber} is already assigned to Class {existingRoom.ClassName} ({existingRoom.Section}). Please use a different room.");
             }
 
             var newClass = new ClassDetails
@@ -352,16 +352,15 @@ namespace AcademicManagementSystem.Services
             if (isClassSectionExist != null)
             {
                 var sectionName = string.IsNullOrWhiteSpace(dto.Section) ? "No Section" : dto.Section;
-                throw new Exception($"Another class {dto.ClassName} with '{sectionName}' already exists.");
+                throw new Exception($"Another class {dto.ClassName} with Section '{sectionName}' already exists.");
             }
 
-            var isRoomTaken = await _context.ClassDetails.FirstOrDefaultAsync(c =>
+            var existingRoom = await _context.ClassDetails.FirstOrDefaultAsync(c =>
                 c.Id != id && c.RoomNumber == dto.RoomNumber);
 
-            if (isRoomTaken != null)
+            if (existingRoom != null)
             {
-                var occupantSection = string.IsNullOrWhiteSpace(isRoomTaken.Section) ? "" : $" ({isRoomTaken.Section})";
-                throw new Exception($"Room number {dto.RoomNumber} is already occupied by Class {isRoomTaken.ClassName}{occupantSection}.");
+                throw new Exception($"Room number {dto.RoomNumber} is already occupied by Class {existingRoom.ClassName} ({existingRoom.Section}).");
             }
 
             existingClass.ClassName = dto.ClassName;
