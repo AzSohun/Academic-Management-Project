@@ -9,14 +9,15 @@ interface EditStudentProps {
     classList: ClassOption[];
     onClose: () => void;
     onSuccess: () => void;
-    showStatus: (type: 'success' | 'error', msg: string) => void;
 }
 
-export default function EditStudent({ student, classList, onClose, onSuccess, showStatus }: EditStudentProps) {
+export default function EditStudent({ student, classList, onClose, onSuccess }: EditStudentProps) {
     const [editStudentRoll, setEditStudentRoll] = useState('');
     const [editStudentGroup, setEditStudentGroup] = useState('');
     const [editStudentClassId, setEditStudentClassId] = useState('');
-    const [studentFormError, setStudentFormError] = useState('');
+
+    const [inlineMsg, setInlineMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         setEditStudentRoll(student.rollNo || '');
@@ -27,7 +28,8 @@ export default function EditStudent({ student, classList, onClose, onSuccess, sh
 
     const handleUpdateStudent = async (e: React.FormEvent) => {
         e.preventDefault();
-        setStudentFormError('');
+        setInlineMsg(null);
+        setIsLoading(true);
 
         const selectedClass = classList.find((c: any) => c.id === editStudentClassId);
         const derivedSection = selectedClass ? selectedClass.section : '';
@@ -39,10 +41,22 @@ export default function EditStudent({ student, classList, onClose, onSuccess, sh
                 section: derivedSection,
                 classDetailsId: editStudentClassId || null
             });
-            showStatus('success', 'Student details updated successfully!');
-            onSuccess();
+
+            setInlineMsg({ text: 'Student details updated successfully!', type: 'success' });
+
+            setTimeout(() => {
+                onSuccess();
+                onClose();
+            }, 1500);
         } catch (err: any) {
-            setStudentFormError(err.response?.data?.message || 'Failed to update student.');
+            const errorMessage = err.response?.data?.message
+                || err.response?.data?.detail
+                || err.response?.data?.title
+                || (typeof err.response?.data === 'string' ? err.response.data : null)
+                || 'Failed to update student. (Server error)';
+
+            setInlineMsg({ text: errorMessage, type: 'error' });
+            setIsLoading(false);
         }
     };
 
@@ -57,7 +71,6 @@ export default function EditStudent({ student, classList, onClose, onSuccess, sh
                     <button onClick={onClose} className="text-slate-400 hover:text-white text-base cursor-pointer">✕</button>
                 </div>
                 <form onSubmit={handleUpdateStudent} className="space-y-4">
-                    {studentFormError && <p className="text-xs text-rose-500 bg-rose-950/40 border border-rose-800 p-2 rounded">{studentFormError}</p>}
                     <div>
                         <label className="block text-xs font-medium text-slate-400 mb-1">Roll No</label>
                         <input type="text" value={editStudentRoll} onChange={(e) => setEditStudentRoll(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required />
@@ -92,9 +105,20 @@ export default function EditStudent({ student, classList, onClose, onSuccess, sh
                             <option value="Arts">Arts</option>
                         </select>
                     </div>
+
+                    {inlineMsg && (
+                        <div className={`p-2.5 mt-2 rounded-lg text-xs font-medium border ${inlineMsg.type === 'error' ? 'bg-rose-950/40 text-rose-400 border-rose-800/60' : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'}`}>
+                            {inlineMsg.type === 'error' ? '⚠ ' : '✓ '} {inlineMsg.text}
+                        </div>
+                    )}
+
                     <div className="flex justify-end gap-2 pt-3 border-t border-slate-800 mt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition cursor-pointer">Cancel manual</button>
-                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-500 transition cursor-pointer">Save Details</button>
+                        <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition cursor-pointer disabled:opacity-50">
+                            Cancel
+                        </button>
+                        <button type="submit" disabled={isLoading} className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-500 transition cursor-pointer disabled:opacity-50">
+                            {isLoading ? 'Saving...' : 'Save Details'}
+                        </button>
                     </div>
                 </form>
             </div>

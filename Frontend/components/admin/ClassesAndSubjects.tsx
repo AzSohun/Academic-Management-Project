@@ -34,13 +34,23 @@ export default function ClassesAndSubjects({ classList, subjectList, fetchDashbo
     const [editingClass, setEditingClass] = useState<ClassOption | null>(null);
     const [editingSubject, setEditingSubject] = useState<SubjectOption | null>(null);
 
+    // 🎯 Error Helper Function
+    const extractError = (err: any, fallbackMsg: string) => {
+        return err.response?.data?.message
+            || err.response?.data?.detail
+            || err.response?.data?.title
+            || (typeof err.response?.data === 'string' ? err.response.data : fallbackMsg);
+    };
+
     const handleCreateClass = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             await api.post('/admin/classes', { className, section, roomNumber });
             showStatus('success', `Class created successfully!`);
             setClassName(''); setSection(''); setRoomNumber(''); fetchDashboardData();
-        } catch { showStatus('error', 'Failed to create class.'); }
+        } catch (err: any) {
+            showStatus('error', extractError(err, 'Failed to create class.'));
+        }
     };
 
     const handleCreateSubject = async (e: React.FormEvent) => {
@@ -49,7 +59,9 @@ export default function ClassesAndSubjects({ classList, subjectList, fetchDashbo
             await api.post('/admin/subjects', { subjectName, subjectCode, subjectDescription });
             showStatus('success', `Subject created successfully!`);
             setSubjectName(''); setSubjectCode(''); setSubjectDescription(''); fetchDashboardData();
-        } catch { showStatus('error', 'Failed to create subject.'); }
+        } catch (err: any) {
+            showStatus('error', extractError(err, 'Failed to create subject.'));
+        }
     };
 
     const handleClassSubjectAction = async (e: React.FormEvent) => {
@@ -60,22 +72,34 @@ export default function ClassesAndSubjects({ classList, subjectList, fetchDashbo
             await api.post(`${endpoint}?classId=${assignClassId}&subjectId=${assignSubjectIdToClass}`);
             showStatus('success', `Mapping ${classSubjectMode} successful!`);
             setAssignClassId(''); setAssignSubjectIdToClass(''); fetchDashboardData();
-        } catch { showStatus('error', `Failed to ${classSubjectMode} mapping.`); }
+        } catch (err: any) {
+            showStatus('error', extractError(err, `Failed to ${classSubjectMode} mapping.`));
+        }
     };
 
     const handleDeleteClass = async (c: ClassOption) => {
         const result = await Swal.fire({ title: 'Are you sure?', text: `Delete class "${c.className}"?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e11d48', background: '#0f172a', color: '#fff' });
         if (result.isConfirmed) {
-            try { await api.delete(`/admin/classes/${c.id}`); showStatus('success', 'Class deleted'); fetchDashboardData(); }
-            catch { showStatus('error', 'Could not delete class'); }
+            try {
+                await api.delete(`/admin/classes/${c.id}`);
+                showStatus('success', 'Class deleted');
+                fetchDashboardData();
+            } catch (err: any) {
+                showStatus('error', extractError(err, 'Could not delete class'));
+            }
         }
     };
 
     const handleDeleteSubject = async (s: SubjectOption) => {
         const result = await Swal.fire({ title: 'Are you sure?', text: `Delete subject "${s.subjectName}"?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e11d48', background: '#0f172a', color: '#fff' });
         if (result.isConfirmed) {
-            try { await api.delete(`/admin/subjects/${s.id}`); showStatus('success', 'Subject deleted'); fetchDashboardData(); }
-            catch { showStatus('error', 'Could not delete subject'); }
+            try {
+                await api.delete(`/admin/subjects/${s.id}`);
+                showStatus('success', 'Subject deleted');
+                fetchDashboardData();
+            } catch (err: any) {
+                showStatus('error', extractError(err, 'Could not delete subject'));
+            }
         }
     };
 
@@ -196,8 +220,8 @@ export default function ClassesAndSubjects({ classList, subjectList, fetchDashbo
                 </div>
             </div>
 
-            {editingClass && <EditClass classItem={editingClass} onClose={() => setEditingClass(null)} onSuccess={() => { setEditingClass(null); fetchDashboardData(); }} showStatus={showStatus} />}
-            {editingSubject && <EditSubject subject={editingSubject} onClose={() => setEditingSubject(null)} onSuccess={() => { setEditingSubject(null); fetchDashboardData(); }} showStatus={showStatus} />}
+            {editingClass && <EditClass classItem={editingClass} onClose={() => setEditingClass(null)} onSuccess={() => { setEditingClass(null); fetchDashboardData(); }} />}
+            {editingSubject && <EditSubject subject={editingSubject} onClose={() => setEditingSubject(null)} onSuccess={() => { setEditingSubject(null); fetchDashboardData(); }} />}
         </div>
     );
 }

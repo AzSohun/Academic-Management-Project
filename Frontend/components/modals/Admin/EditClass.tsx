@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { api } from '@/lib/api';
 import { ClassOption } from '@/interfaces/admin';
@@ -6,25 +8,39 @@ interface EditClassProps {
     classItem: ClassOption;
     onClose: () => void;
     onSuccess: () => void;
-    showStatus: (type: 'success' | 'error', msg: string) => void;
 }
 
-export default function EditClass({ classItem, onClose, onSuccess, showStatus }: EditClassProps) {
+export default function EditClass({ classItem, onClose, onSuccess }: EditClassProps) {
     const [editClassName, setEditClassName] = useState(classItem.className);
     const [editSection, setEditSection] = useState(classItem.section || '');
     const [editRoomNumber, setEditRoomNumber] = useState(classItem.roomNumber);
 
+    const [inlineMsg, setInlineMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
     const handleUpdateClass = async (e: React.FormEvent) => {
         e.preventDefault();
+        setInlineMsg(null);
+        setIsLoading(true);
+
         try {
             await api.put(`/admin/classes/${classItem.id}`, {
                 className: editClassName,
                 section: editSection,
                 roomNumber: editRoomNumber
             });
-            showStatus('success', `Class updated successfully!`);
-            onSuccess();
-        } catch { showStatus('error', 'Failed to update class.'); }
+
+            setInlineMsg({ text: 'Class updated successfully!', type: 'success' });
+
+            setTimeout(() => {
+                onSuccess();
+                onClose();
+            }, 1500);
+
+        } catch (err: any) {
+            setInlineMsg({ text: err.response?.data?.message || 'Failed to update class.', type: 'error' });
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -47,9 +63,20 @@ export default function EditClass({ classItem, onClose, onSuccess, showStatus }:
                         <label className="block text-xs font-medium text-slate-400 mb-1">Room Number</label>
                         <input type="text" value={editRoomNumber} onChange={(e) => setEditRoomNumber(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required />
                     </div>
+
+                    {inlineMsg && (
+                        <div className={`p-2.5 mt-2 rounded-lg text-xs font-medium border ${inlineMsg.type === 'error' ? 'bg-rose-950/40 text-rose-400 border-rose-800/60' : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'}`}>
+                            {inlineMsg.type === 'error' ? '⚠ ' : '✓ '} {inlineMsg.text}
+                        </div>
+                    )}
+
                     <div className="flex justify-end gap-2 pt-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition cursor-pointer">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-500 transition cursor-pointer">Save Changes</button>
+                        <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition cursor-pointer disabled:opacity-50">
+                            Cancel
+                        </button>
+                        <button type="submit" disabled={isLoading} className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-500 transition cursor-pointer disabled:opacity-50">
+                            {isLoading ? 'Saving...' : 'Save Changes'}
+                        </button>
                     </div>
                 </form>
             </div>

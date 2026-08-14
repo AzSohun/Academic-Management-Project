@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import Swal from 'sweetalert2';
 import Pagination from '@/components/common/Pagination';
 import { User, QueryResultDto, StudentOption, TeacherOption, ClassOption, SubjectOption, getRoleNumeric, getGenderName } from '@/interfaces/admin';
 
@@ -13,10 +12,9 @@ interface AcademicManagementProps {
     classList: ClassOption[];
     subjectList: SubjectOption[];
     fetchDashboardData: () => void;
-    showStatus: (type: 'success' | 'error', msg: string) => void;
 }
 
-export default function AcademicManagement({ currentUser, studentsList, teachersList, classList, subjectList, fetchDashboardData, showStatus }: AcademicManagementProps) {
+export default function AcademicManagement({ currentUser, studentsList, teachersList, classList, subjectList, fetchDashboardData }: AcademicManagementProps) {
     const [usersResult, setUsersResult] = useState<QueryResultDto<User>>({
         items: [], totalCount: 0, pageNumber: 1, pageSize: 10, totalPages: 0, hasPreviousPage: false, hasNextPage: false,
     });
@@ -25,12 +23,19 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
     const [pageNumber, setPageNumber] = useState(1);
     const [pageSize, setPageSize] = useState(10);
 
+    // Form States
     const [selectedStudentId, setSelectedStudentId] = useState('');
     const [selectedStudentClassId, setSelectedStudentClassId] = useState('');
+
     const [unifiedMode, setUnifiedMode] = useState<'assign' | 'remove'>('assign');
     const [unifiedTeacherId, setUnifiedTeacherId] = useState('');
     const [unifiedClassId, setUnifiedClassId] = useState('');
     const [unifiedSubjectId, setUnifiedSubjectId] = useState('');
+
+    // Inline Message States
+    const [studentMsg, setStudentMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+    const [teacherMsg, setTeacherMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+    const [tableMsg, setTableMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
     useEffect(() => {
         const timer = setTimeout(() => { fetchPaginatedUsers(); }, 300);
@@ -42,6 +47,7 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
             const params: Record<string, any> = { pageNumber, pageSize };
             if (userSearch.trim()) params.search = userSearch.trim();
             if (roleFilter !== 'all') params.role = Number(roleFilter);
+
             const res = await api.get('/admin/users', { params });
             const data = res.data;
             setUsersResult({
@@ -49,58 +55,90 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                 pageNumber: data.pageNumber ?? 1, pageSize: data.pageSize ?? 10, totalPages: data.totalPages ?? 0,
                 hasPreviousPage: data.hasPreviousPage ?? false, hasNextPage: data.hasNextPage ?? false,
             });
-        } catch { showStatus('error', 'Failed to load users'); }
+        } catch (err: any) {
+            console.error("Failed to load users", err);
+        }
     };
 
     const handleAssignStudent = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedStudentId || !selectedStudentClassId) return showStatus('error', 'Select both student and class.');
+        setStudentMsg(null);
+
+        if (!selectedStudentId || !selectedStudentClassId) {
+            return setStudentMsg({ text: 'Please select both student and class.', type: 'error' });
+        }
+
         try {
             await api.post(`/admin/assign-student-to-class?studentId=${selectedStudentId}&classId=${selectedStudentClassId}`);
-            showStatus('success', 'Student successfully assigned to class!');
+            setStudentMsg({ text: 'Student successfully assigned to class!', type: 'success' });
             setSelectedStudentId(''); setSelectedStudentClassId('');
             fetchDashboardData();
-        } catch { showStatus('error', 'Failed to assign student.'); }
+
+            setTimeout(() => setStudentMsg(null), 3000);
+        } catch (err: any) {
+            setStudentMsg({ text: err.response?.data?.message || 'Failed to assign student.', type: 'error' });
+        }
     };
 
     const handleUnifiedTeacherAllocation = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!unifiedTeacherId || !unifiedClassId || !unifiedSubjectId) return showStatus('error', 'Please select Teacher, Class, and Subject.');
+        setTeacherMsg(null);
+
+        if (!unifiedTeacherId || !unifiedClassId || !unifiedSubjectId) {
+            return setTeacherMsg({ text: 'Please select Teacher, Class, and Subject.', type: 'error' });
+        }
+
         try {
             const endpoint = unifiedMode === 'assign' ? '/admin/assign-teacher-allocation' : '/admin/remove-teacher-allocation';
             await api.post(endpoint, { teacherId: unifiedTeacherId, classId: unifiedClassId, subjectId: unifiedSubjectId });
-            showStatus('success', `Allocation ${unifiedMode === 'assign' ? 'assigned' : 'removed'} successfully!`);
+            setTeacherMsg({ text: `Allocation ${unifiedMode === 'assign' ? 'assigned' : 'removed'} successfully!`, type: 'success' });
             setUnifiedTeacherId(''); setUnifiedClassId(''); setUnifiedSubjectId('');
             fetchDashboardData();
-        } catch (err: any) { showStatus('error', err.response?.data?.message || `Failed to ${unifiedMode} allocation.`); }
+
+            setTimeout(() => setTeacherMsg(null), 3000);
+        } catch (err: any) {
+            setTeacherMsg({ text: err.response?.data?.message || `Failed to ${unifiedMode} allocation.`, type: 'error' });
+        }
     };
 
     const handleRoleChange = async (userId: string, newRoleValue: number) => {
+        setTableMsg(null);
         try {
             await api.put(`/admin/users/${userId}/role`, { role: newRoleValue });
-            showStatus('success', 'User role updated successfully!');
+            setTableMsg({ text: 'User role updated successfully!', type: 'success' });
             fetchPaginatedUsers();
-        } catch { showStatus('error', 'Failed to update user role.'); }
+            setTimeout(() => setTableMsg(null), 3000);
+        } catch (err: any) {
+            setTableMsg({ text: err.response?.data?.message || 'Failed to update user role.', type: 'error' });
+        }
     };
 
     const handleDeleteUser = async (userItem: User) => {
         const currentUserId = (currentUser as any)?.id || (currentUser as any)?.userId;
+
         if (userItem.email === currentUser?.email || (currentUserId && userItem.id === currentUserId)) {
-            return Swal.fire({ title: 'Action Denied!', text: 'You cannot delete your own account.', icon: 'error', background: '#0f172a', color: '#f8fafc', confirmButtonColor: '#e11d48' });
+            setTableMsg({ text: 'You cannot delete your own account.', type: 'error' });
+            return;
         }
-        const result = await Swal.fire({ title: 'Are you sure?', text: `Delete user "${userItem.firstName}"?`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, Delete', background: '#0f172a', color: '#f8fafc', confirmButtonColor: '#e11d48', cancelButtonColor: '#334155' });
-        if (result.isConfirmed) {
+
+        const isConfirmed = window.confirm(`Are you sure you want to delete user "${userItem.firstName}"?`);
+
+        if (isConfirmed) {
             try {
                 await api.delete(`/admin/users/${userItem.id}`);
-                Swal.fire({ title: 'Deleted!', icon: 'success', background: '#0f172a', color: '#f8fafc', confirmButtonColor: '#4f46e5' });
+                setTableMsg({ text: 'User deleted successfully.', type: 'success' });
                 fetchPaginatedUsers();
-            } catch { showStatus('error', 'Could not delete user.'); }
+                setTimeout(() => setTableMsg(null), 3000);
+            } catch (err: any) {
+                setTableMsg({ text: err.response?.data?.message || 'Could not delete user.', type: 'error' });
+            }
         }
     };
 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Assign Student Section */}
                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                     <h3 className="text-sm font-semibold text-slate-200">Assign Student to Class</h3>
                     <form onSubmit={handleAssignStudent} className="space-y-3">
@@ -128,16 +166,24 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                                 </option>
                             ))}
                         </select>
+
+                        {studentMsg && (
+                            <div className={`p-2.5 rounded-lg text-xs font-medium border ${studentMsg.type === 'error' ? 'bg-rose-950/40 text-rose-400 border-rose-800/60' : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'}`}>
+                                ⚠ {studentMsg.text}
+                            </div>
+                        )}
+
                         <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg text-sm transition cursor-pointer">Assign Student</button>
                     </form>
                 </div>
 
+                {/* Assign Teacher Section */}
                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                         <h3 className="text-sm font-semibold text-slate-200">Assign Teacher Allocation</h3>
                         <div className="flex bg-slate-950 rounded p-0.5 border border-slate-700">
-                            <button type="button" onClick={() => setUnifiedMode('assign')} className={`px-3 py-1 text-xs font-medium rounded-sm transition cursor-pointer ${unifiedMode === 'assign' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}>Assign</button>
-                            <button type="button" onClick={() => setUnifiedMode('remove')} className={`px-3 py-1 text-xs font-medium rounded-sm transition cursor-pointer ${unifiedMode === 'remove' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-white'}`}>Remove</button>
+                            <button type="button" onClick={() => { setUnifiedMode('assign'); setTeacherMsg(null); }} className={`px-3 py-1 text-xs font-medium rounded-sm transition cursor-pointer ${unifiedMode === 'assign' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}>Assign</button>
+                            <button type="button" onClick={() => { setUnifiedMode('remove'); setTeacherMsg(null); }} className={`px-3 py-1 text-xs font-medium rounded-sm transition cursor-pointer ${unifiedMode === 'remove' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-white'}`}>Remove</button>
                         </div>
                     </div>
                     <form onSubmit={handleUnifiedTeacherAllocation} className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -175,6 +221,13 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                             <option value="">Select Subject...</option>
                             {subjectList.map((s: any) => <option key={s.id} value={s.id}>{s.subjectName}</option>)}
                         </select>
+
+                        {teacherMsg && (
+                            <div className={`md:col-span-3 p-2.5 rounded-lg text-xs font-medium border ${teacherMsg.type === 'error' ? 'bg-rose-950/40 text-rose-400 border-rose-800/60' : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'}`}>
+                                ⚠ {teacherMsg.text}
+                            </div>
+                        )}
+
                         <button type="submit" className={`md:col-span-3 text-white font-medium py-2.5 rounded-lg text-sm transition cursor-pointer ${unifiedMode === 'assign' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'}`}>
                             {unifiedMode === 'assign' ? 'Confirm Allocation' : 'Remove Allocation'}
                         </button>
@@ -182,16 +235,27 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                 </div>
             </div>
 
+            {/* User List Table Section */}
             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <input type="text" placeholder="Search by name or email..." value={userSearch} onChange={(e) => { setUserSearch(e.target.value); setPageNumber(1); }} className="w-full sm:w-72 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" />
-                    <div className="flex gap-1">
-                        {[{ label: 'All', value: 'all' }, { label: 'Admin', value: '0' }, { label: 'Teacher', value: '1' }, { label: 'Student', value: '2' }].map((r) => (
-                            <button key={r.value} onClick={() => { setRoleFilter(r.value); setPageNumber(1); }} className={`px-4 py-1.5 rounded-md text-sm font-medium border transition cursor-pointer ${roleFilter === r.value ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'}`}>
-                                {r.label}
-                            </button>
-                        ))}
+
+                {/* Table Top Actions & Inline Message */}
+                <div className="flex flex-col space-y-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <input type="text" placeholder="Search by name or email..." value={userSearch} onChange={(e) => { setUserSearch(e.target.value); setPageNumber(1); }} className="w-full sm:w-72 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" />
+                        <div className="flex gap-1">
+                            {[{ label: 'All', value: 'all' }, { label: 'Admin', value: '0' }, { label: 'Teacher', value: '1' }, { label: 'Student', value: '2' }].map((r) => (
+                                <button key={r.value} onClick={() => { setRoleFilter(r.value); setPageNumber(1); }} className={`px-4 py-1.5 rounded-md text-sm font-medium border transition cursor-pointer ${roleFilter === r.value ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'}`}>
+                                    {r.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
+
+                    {tableMsg && (
+                        <div className={`p-2.5 rounded-lg text-xs font-medium border w-full ${tableMsg.type === 'error' ? 'bg-rose-950/40 text-rose-400 border-rose-800/60' : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'}`}>
+                            {tableMsg.text}
+                        </div>
+                    )}
                 </div>
 
                 <div className="overflow-x-auto rounded-lg border border-slate-800">
