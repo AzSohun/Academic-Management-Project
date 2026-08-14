@@ -54,9 +54,9 @@ Use the following credentials to explore the different role-based dashboards:
 
 | Role | Email | Password |
 | :--- | :--- | :--- |
-| **Admin** | `admin@scms.com` | `scms@Pass123` |
-| **Teacher** | `abadur.rahman@scms.com` | `abadur.r@Pass123` |
-| **Student** | `araf.islam@scms.com` | `araf.i@Pass123` |
+| **Admin** | `admin@ams.com` | `Admin@123` |
+| **Teacher** | `abadur.rahman@ams.com` | `Teacher@123` |
+| **Student** | `araf.islam@ams.com` | `Student@123` |
 
 ---
 

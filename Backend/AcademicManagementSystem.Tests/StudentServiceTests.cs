@@ -59,8 +59,9 @@ namespace AcademicManagementSystem.Tests
             {
                 Id = testAssignmentId,
                 Title = "Math Homework",
-                DueDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)), 
-                ClassDetailsId = testClassId
+                DueDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)),
+                ClassDetailsId = testClassId,
+                IsDraft = false // 🎯 ফিক্স: ড্রাফট ফলস করা হলো যাতে অ্যাসাইনমেন্ট পাওয়া যায়
             });
 
             await dbContext.SaveChangesAsync();
@@ -82,7 +83,7 @@ namespace AcademicManagementSystem.Tests
 
 
         // ==========================================
-        // Test 1: Submit Assignment (Before Deadline)
+        // Test 2: Submit Assignment (Past Deadline)
         // ==========================================
         [Fact]
         public async Task SubmitAssignmentAsync_WhenPastDeadline_ShouldThrowException()
@@ -122,7 +123,8 @@ namespace AcademicManagementSystem.Tests
                 Id = testAssignmentId,
                 Title = "Late Homework",
                 DueDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
-                ClassDetailsId = testClassId
+                ClassDetailsId = testClassId,
+                IsDraft = false // 🎯 ফিক্স: ড্রাফট ফলস করা হলো
             });
 
             await dbContext.SaveChangesAsync();
@@ -165,7 +167,8 @@ namespace AcademicManagementSystem.Tests
                 Id = testAssignmentId,
                 Title = "Update Test",
                 DueDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)), // Deadline in future
-                ClassDetailsId = testClassId
+                ClassDetailsId = testClassId,
+                IsDraft = false // 🎯 ফিক্স: ড্রাফট ফলস করা হলো
             });
 
             dbContext.Submissions.Add(new Submission
@@ -215,7 +218,8 @@ namespace AcademicManagementSystem.Tests
                 Id = testAssignmentId,
                 Title = "Late Update Test",
                 DueDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)), // Deadline passed
-                ClassDetailsId = testClassId
+                ClassDetailsId = testClassId,
+                IsDraft = false // 🎯 ফিক্স: ড্রাফট ফলস করা হলো
             });
 
             dbContext.Submissions.Add(new Submission
