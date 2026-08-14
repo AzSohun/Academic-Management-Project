@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { api } from '@/lib/api';
 import { Submission } from '@/interfaces/teacher';
@@ -6,29 +8,44 @@ interface GradeSubmissionProps {
     submission: Submission;
     onClose: () => void;
     onSuccess: () => void;
-    showStatus: (type: 'success' | 'error', msg: string) => void;
 }
 
-export default function GradeSubmission({ submission, onClose, onSuccess, showStatus }: GradeSubmissionProps) {
+export default function GradeSubmission({ submission, onClose, onSuccess }: GradeSubmissionProps) {
     const [givenMark, setGivenMark] = useState<number>(submission.markAssigned ?? 0);
     const [givenFeedback, setGivenFeedback] = useState<string>(submission.teacherFeedback ?? '');
 
+    const [inlineMsg, setInlineMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const maxMarks = (submission as any).assignment?.marks || (submission as any).assignmentMarks || 100;
 
     const handleSubmitGrade = async (e: React.FormEvent) => {
         e.preventDefault();
+        setInlineMsg(null);
+        setIsLoading(true);
+
         try {
             await api.post(`/teacher/submissions/${submission.id}/grade`, {
                 marksAssigned: Number(givenMark),
                 feedback: givenFeedback,
                 status: 'Graded'
             });
-            showStatus('success', 'Grade & Feedback updated successfully!');
-            onSuccess();
+
+            setInlineMsg({ text: 'Grade & Feedback updated successfully!', type: 'success' });
+
+            setTimeout(() => {
+                onSuccess();
+                onClose();
+            }, 1500);
         } catch (error: any) {
-            const errorMessage = error.response?.data?.message || error.response?.data || 'Failed to submit grade.';
-            showStatus('error', typeof errorMessage === 'string' ? errorMessage : 'Failed to submit grade.');
+            const errorMessage = error.response?.data?.message
+                || error.response?.data?.detail
+                || error.response?.data?.title
+                || (typeof error.response?.data === 'string' ? error.response.data : null)
+                || 'Failed to submit grade. (Server error)';
+
+            setInlineMsg({ text: errorMessage, type: 'error' });
+            setIsLoading(false);
         }
     };
 
@@ -70,9 +87,29 @@ export default function GradeSubmission({ submission, onClose, onSuccess, showSt
                             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
                         />
                     </div>
+
+                    {inlineMsg && (
+                        <div className={`p-2.5 mt-2 rounded-lg text-xs font-medium border ${inlineMsg.type === 'error' ? 'bg-rose-950/40 text-rose-400 border-rose-800/60' : 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'}`}>
+                            {inlineMsg.type === 'error' ? '⚠ ' : '✓ '} {inlineMsg.text}
+                        </div>
+                    )}
+
                     <div className="flex justify-end gap-3 pt-2">
-                        <button type="button" onClick={onClose} className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition cursor-pointer">Cancel</button>
-                        <button type="submit" className="px-6 py-2.5 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-500 transition cursor-pointer">Save Grade</button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isLoading}
+                            className="px-4 py-2.5 bg-slate-800 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition cursor-pointer disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="px-6 py-2.5 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-500 transition cursor-pointer shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                        >
+                            {isLoading ? 'Saving...' : 'Save Grade'}
+                        </button>
                     </div>
                 </form>
             </div>

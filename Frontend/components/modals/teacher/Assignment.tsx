@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import Pagination from '@/components/common/Pagination';
 import { Assignment, Submission, extractArrayData } from '@/interfaces/teacher';
@@ -13,6 +15,8 @@ interface AssignmentModalProps {
 export default function AssignmentModal({ assignment, onClose, onOpenGrading, refreshTrigger }: AssignmentModalProps) {
     const [submissionsList, setSubmissionsList] = useState<Submission[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null); // 🎯 Error State Added
+
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
 
@@ -22,11 +26,13 @@ export default function AssignmentModal({ assignment, onClose, onOpenGrading, re
 
     const fetchSubmissions = async () => {
         setIsLoading(true);
+        setErrorMsg(null);
         try {
             const res = await api.get(`/teacher/assignments/${assignment.id}/submissions`);
             setSubmissionsList(extractArrayData(res));
-        } catch {
-            console.error('Failed to load submissions for this assignment.');
+        } catch (err: any) {
+            const message = err.response?.data?.message || 'Failed to load submissions for this assignment. Please try again.';
+            setErrorMsg(message);
         } finally {
             setIsLoading(false);
         }
@@ -52,6 +58,19 @@ export default function AssignmentModal({ assignment, onClose, onOpenGrading, re
                     {isLoading ? (
                         <div className="flex justify-center items-center py-20">
                             <svg className="w-8 h-8 animate-spin text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        </div>
+                    ) : errorMsg ? (
+                        <div className="flex flex-col justify-center items-center py-16">
+                            <div className="bg-rose-950/40 border border-rose-800/60 p-4 rounded-lg flex items-center gap-3 max-w-lg w-full">
+                                <svg className="w-6 h-6 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                <div>
+                                    <h4 className="text-sm font-semibold text-rose-400">Error Loading Data</h4>
+                                    <p className="text-xs text-rose-300 mt-1">{errorMsg}</p>
+                                </div>
+                            </div>
+                            <button onClick={fetchSubmissions} className="mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-md transition cursor-pointer">
+                                Try Again
+                            </button>
                         </div>
                     ) : (
                         <div className="overflow-x-auto rounded-lg border border-slate-800">
@@ -87,7 +106,7 @@ export default function AssignmentModal({ assignment, onClose, onOpenGrading, re
                                             </td>
                                         </tr>
                                     ))}
-                                    {submissionsList.length === 0 && (
+                                    {!isLoading && submissionsList.length === 0 && (
                                         <tr>
                                             <td colSpan={5} className="p-8 text-center">
                                                 <div className="flex flex-col items-center justify-center text-slate-500">
@@ -98,7 +117,9 @@ export default function AssignmentModal({ assignment, onClose, onOpenGrading, re
                                     )}
                                 </tbody>
                             </table>
-                            <Pagination totalItems={submissionsList.length} page={page} limit={limit} onPageChange={setPage} onLimitChange={l => { setLimit(l); setPage(1); }} />
+                            {!isLoading && submissionsList.length > 0 && (
+                                <Pagination totalItems={submissionsList.length} page={page} limit={limit} onPageChange={setPage} onLimitChange={l => { setLimit(l); setPage(1); }} />
+                            )}
                         </div>
                     )}
                 </div>
