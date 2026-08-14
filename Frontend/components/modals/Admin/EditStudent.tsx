@@ -9,6 +9,7 @@ interface EditStudentProps {
     classList: ClassOption[];
     onClose: () => void;
     onSuccess: () => void;
+    showStatus?: (type: 'success' | 'error', msg: string) => void;
 }
 
 export default function EditStudent({ student, classList, onClose, onSuccess }: EditStudentProps) {

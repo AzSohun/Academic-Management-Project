@@ -10,6 +10,7 @@ interface EditAssignmentProps {
     subjectList: Subject[];
     onClose: () => void;
     onSuccess: () => void;
+    showStatus?: (type: 'success' | 'error', msg: string) => void;
 }
 
 export default function EditAssignment({ assignment, myClasses, subjectList, onClose, onSuccess }: EditAssignmentProps) {

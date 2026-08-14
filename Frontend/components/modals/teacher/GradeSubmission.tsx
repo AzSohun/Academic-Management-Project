@@ -8,6 +8,7 @@ interface GradeSubmissionProps {
     submission: Submission;
     onClose: () => void;
     onSuccess: () => void;
+    showStatus?: (type: 'success' | 'error', msg: string) => void;
 }
 
 export default function GradeSubmission({ submission, onClose, onSuccess }: GradeSubmissionProps) {

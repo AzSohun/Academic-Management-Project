@@ -10,6 +10,7 @@ interface EditTeacherProps {
     subjectList: SubjectOption[];
     onClose: () => void;
     onSuccess: () => void;
+    showStatus?: (type: 'success' | 'error', msg: string) => void;
 }
 
 export default function EditTeacher({ teacher, classList, subjectList, onClose, onSuccess }: EditTeacherProps) {

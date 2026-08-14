@@ -12,6 +12,7 @@ interface AcademicManagementProps {
     classList: ClassOption[];
     subjectList: SubjectOption[];
     fetchDashboardData: () => void;
+    showStatus?: (type: 'success' | 'error', msg: string) => void;
 }
 
 export default function AcademicManagement({ currentUser, studentsList, teachersList, classList, subjectList, fetchDashboardData }: AcademicManagementProps) {
