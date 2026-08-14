@@ -61,11 +61,11 @@ namespace AcademicManagementSystem.Services
             teacher.User.FirstName = dto.FirstName.Trim();
             teacher.User.LastName = dto.LastName.Trim();
 
-            teacher.PhoneNumber = dto.PhoneNumber?.Trim()!;
-            teacher.Address = dto.Address?.Trim()!;
+            teacher.PhoneNumber = dto.PhoneNumber?.Trim() ?? string.Empty;
+            teacher.Address = dto.Address?.Trim() ?? string.Empty;
             teacher.DateOfBirth = dto.DateOfBirth;
-            teacher.Qualification = dto.Qualification?.Trim()!;
-            teacher.Experience = dto.Experience?.Trim()!;
+            teacher.Qualification = dto.Qualification?.Trim() ?? string.Empty;
+            teacher.Experience = dto.Experience?.Trim() ?? string.Empty;
             teacher.UpdatedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -183,7 +183,7 @@ namespace AcademicManagementSystem.Services
             var assignment = new Assignment
             {
                 Title = title,
-                Description = dto.Description?.Trim()!,
+                Description = dto.Description?.Trim() ?? string.Empty,
                 Marks = dto.Marks,
                 DueDate = dto.DueDate,
                 ClassDetailsId = dto.ClassDetailsId,
@@ -199,7 +199,7 @@ namespace AcademicManagementSystem.Services
             {
                 Id = assignment.Id,
                 Title = assignment.Title,
-                Description = assignment.Description!,
+                Description = assignment.Description,
                 Marks = assignment.Marks,
                 DueDate = assignment.DueDate,
                 IsDraft = assignment.IsDraft,
@@ -243,7 +243,7 @@ namespace AcademicManagementSystem.Services
             }
 
             assignment.Title = title;
-            assignment.Description = dto.Description?.Trim()!;
+            assignment.Description = dto.Description?.Trim() ?? string.Empty;
             assignment.Marks = dto.Marks;
             assignment.DueDate = dto.DueDate;
             assignment.IsDraft = dto.IsDraft;
@@ -376,7 +376,7 @@ namespace AcademicManagementSystem.Services
             }
 
             submission.MarkAssigned = dto.MarksAssigned;
-            submission.TeacherFeedback = dto.Feedback?.Trim()!;
+            submission.TeacherFeedback = dto.Feedback?.Trim() ?? string.Empty;
             submission.Status = dto.Status;
             submission.UpdatedDate = DateTime.UtcNow;
 
