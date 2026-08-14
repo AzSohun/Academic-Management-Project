@@ -119,6 +119,7 @@ namespace AcademicManagementSystem.Services
             var query = _context.Students
                 .Include(s => s.User)
                 .Include(s => s.ClassDetails)
+                .Where(s => s.User != null && s.User.Role == Models.Role.Student)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -265,7 +266,6 @@ namespace AcademicManagementSystem.Services
                 Email = t.User != null ? t.User.Email : string.Empty,
                 TeacherCode = t.TeacherCode,
                 Specialization = t.Specialization ?? "General",
-                // Updated line below to include section
                 AssignedClasses = t.Classes.Select(c => string.IsNullOrWhiteSpace(c.Section) ? c.ClassName : $"{c.ClassName} ({c.Section})").ToList(),
                 AssignedSubjects = t.Subjects.Select(s => s.SubjectName).ToList()
             }).ToListAsync();
@@ -524,7 +524,6 @@ namespace AcademicManagementSystem.Services
                     Qualification = t.Qualification,
                     Specialization = t.Specialization,
                     Experience = t.Experience,
-                    // Updated line below to include section
                     AssignedClasses = t.Classes.Select(c => string.IsNullOrWhiteSpace(c.Section) ? c.ClassName : $"{c.ClassName} ({c.Section})").ToList(),
                     AssignedSubjects = t.Subjects.Select(s => s.SubjectName).ToList()
                 }).ToListAsync();
