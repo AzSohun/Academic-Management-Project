@@ -311,12 +311,21 @@ namespace AcademicManagementSystem.Services
 
         public async Task<ClassDetails> CreateClassAsync(CreateClassDto dto)
         {
-            var isClassExist = await _context.ClassDetails.FirstOrDefaultAsync(c =>
-                c.ClassName == dto.ClassName && c.Section == dto.Section && c.RoomNumber == dto.RoomNumber);
+            var isClassSectionExist = await _context.ClassDetails.FirstOrDefaultAsync(c =>
+                c.ClassName == dto.ClassName && c.Section == dto.Section);
 
-            if (isClassExist != null)
+            if (isClassSectionExist != null)
             {
-                throw new Exception("Class with the same name, section and room number already exists.");
+                var sectionName = string.IsNullOrWhiteSpace(dto.Section) ? "No Section" : dto.Section;
+                throw new Exception($"Class {dto.ClassName} with '{sectionName}' already exists.");
+            }
+
+            var isRoomTaken = await _context.ClassDetails.FirstOrDefaultAsync(c => c.RoomNumber == dto.RoomNumber);
+
+            if (isRoomTaken != null)
+            {
+                var occupantSection = string.IsNullOrWhiteSpace(isRoomTaken.Section) ? "" : $" ({isRoomTaken.Section})";
+                throw new Exception($"Room number {dto.RoomNumber} is already occupied by Class {isRoomTaken.ClassName}{occupantSection}.");
             }
 
             var newClass = new ClassDetails
@@ -336,6 +345,24 @@ namespace AcademicManagementSystem.Services
         {
             var existingClass = await _context.ClassDetails.FindAsync(id);
             if (existingClass == null) return null;
+
+            var isClassSectionExist = await _context.ClassDetails.FirstOrDefaultAsync(c =>
+                c.Id != id && c.ClassName == dto.ClassName && c.Section == dto.Section);
+
+            if (isClassSectionExist != null)
+            {
+                var sectionName = string.IsNullOrWhiteSpace(dto.Section) ? "No Section" : dto.Section;
+                throw new Exception($"Another class {dto.ClassName} with '{sectionName}' already exists.");
+            }
+
+            var isRoomTaken = await _context.ClassDetails.FirstOrDefaultAsync(c =>
+                c.Id != id && c.RoomNumber == dto.RoomNumber);
+
+            if (isRoomTaken != null)
+            {
+                var occupantSection = string.IsNullOrWhiteSpace(isRoomTaken.Section) ? "" : $" ({isRoomTaken.Section})";
+                throw new Exception($"Room number {dto.RoomNumber} is already occupied by Class {isRoomTaken.ClassName}{occupantSection}.");
+            }
 
             existingClass.ClassName = dto.ClassName;
             existingClass.Section = dto.Section;
@@ -383,6 +410,14 @@ namespace AcademicManagementSystem.Services
             var subject = await _context.Subjects.FindAsync(id);
             if (subject == null) return null;
 
+            var isDuplicate = await _context.Subjects.FirstOrDefaultAsync(s =>
+                s.Id != id && s.SubjectName == dto.SubjectName && s.SubjectCode == dto.SubjectCode);
+
+            if (isDuplicate != null)
+            {
+                throw new Exception("Another subject with the same name or code already exists.");
+            }
+
             subject.SubjectName = dto.SubjectName;
             subject.SubjectCode = dto.SubjectCode;
             subject.SubjectDescription = dto.SubjectDescription;
@@ -408,6 +443,11 @@ namespace AcademicManagementSystem.Services
             if (student == null)
             {
                 return false;
+            }
+
+            if (student.ClassDetailsId == classId)
+            {
+                throw new Exception("This student is already assigned to the selected class.");
             }
 
             var classDetails = await _context.ClassDetails.FindAsync(classId);
@@ -453,11 +493,14 @@ namespace AcademicManagementSystem.Services
 
             if (teacher == null || subject == null) return false;
 
-            if (!teacher.Subjects.Any(s => s.Id == subjectId))
+            if (teacher.Subjects.Any(s => s.Id == subjectId))
             {
-                teacher.Subjects.Add(subject);
-                await _context.SaveChangesAsync();
+                throw new Exception("This subject is already assigned to the selected teacher.");
             }
+
+            teacher.Subjects.Add(subject);
+            await _context.SaveChangesAsync();
+
             return true;
         }
 
@@ -482,11 +525,14 @@ namespace AcademicManagementSystem.Services
 
             if (classDetails == null || subject == null) return false;
 
-            if (!classDetails.Subjects.Any(s => s.Id == subjectId))
+            if (classDetails.Subjects.Any(s => s.Id == subjectId))
             {
-                classDetails.Subjects.Add(subject);
-                await _context.SaveChangesAsync();
+                throw new Exception("This subject is already mapped to the selected class and section.");
             }
+
+            classDetails.Subjects.Add(subject);
+            await _context.SaveChangesAsync();
+
             return true;
         }
 
@@ -568,13 +614,22 @@ namespace AcademicManagementSystem.Services
 
             if (teacher == null || classDetails == null || subject == null) return false;
 
-            if (!teacher.Classes.Any(c => c.Id == dto.ClassId))
+            var isTeacherClassExist = teacher.Classes.Any(c => c.Id == dto.ClassId);
+            var isTeacherSubjectExist = teacher.Subjects.Any(s => s.Id == dto.SubjectId);
+            var isClassSubjectExist = classDetails.Subjects.Any(s => s.Id == dto.SubjectId);
+
+            if (isTeacherClassExist && isTeacherSubjectExist && isClassSubjectExist)
+            {
+                throw new Exception("This exact allocation (Teacher + Class + Subject) already exists in the system.");
+            }
+
+            if (!isTeacherClassExist)
                 teacher.Classes.Add(classDetails);
 
-            if (!teacher.Subjects.Any(s => s.Id == dto.SubjectId))
+            if (!isTeacherSubjectExist)
                 teacher.Subjects.Add(subject);
 
-            if (!classDetails.Subjects.Any(s => s.Id == dto.SubjectId))
+            if (!isClassSubjectExist)
                 classDetails.Subjects.Add(subject);
 
             await _context.SaveChangesAsync();
