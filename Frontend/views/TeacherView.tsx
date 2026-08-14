@@ -151,10 +151,9 @@ export default function TeacherView() {
                 </main>
             </div>
 
-            {/* Modals */}
             {viewingStudentsClass && <ViewClassInfo viewingStudentsClass={viewingStudentsClass} onClose={() => setViewingStudentsClass(null)} />}
-            {editingAssignment && <EditAssignment assignment={editingAssignment} myClasses={myClasses} subjectList={subjectList} onClose={() => setEditingAssignment(null)} onSuccess={() => { setEditingAssignment(null); fetchTeacherData(); }} showStatus={showStatus} />}
-            {gradingSubmission && <GradeSubmission submission={gradingSubmission} onClose={() => setGradingSubmission(null)} onSuccess={() => { setGradingSubmission(null); fetchTeacherData(); setRefreshTrigger(prev => prev + 1); }} showStatus={showStatus} />}
+            {editingAssignment && <EditAssignment assignment={editingAssignment} myClasses={myClasses} subjectList={subjectList} onClose={() => setEditingAssignment(null)} onSuccess={() => { setEditingAssignment(null); fetchTeacherData(); }} />}
+            {gradingSubmission && <GradeSubmission submission={gradingSubmission} onClose={() => setGradingSubmission(null)} onSuccess={() => { setGradingSubmission(null); fetchTeacherData(); setRefreshTrigger(prev => prev + 1); }} />}
             {viewingAssignmentSubmissions && <AssignmentModal assignment={viewingAssignmentSubmissions} onClose={() => setViewingAssignmentSubmissions(null)} onOpenGrading={setGradingSubmission} refreshTrigger={refreshTrigger} />}
         </div>
     );
