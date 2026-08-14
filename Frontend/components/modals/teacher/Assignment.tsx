@@ -1,207 +1,133 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import Swal from 'sweetalert2';
 import Pagination from '@/components/common/Pagination';
-import { Assignment as IAssignment, MyClass, Subject } from '@/interfaces/teacher';
+import { Assignment, Submission, extractArrayData } from '@/interfaces/teacher';
 
-interface AssignmentProps {
-    assignments: IAssignment[];
-    myClasses: MyClass[];
-    subjectList: Subject[];
-    fetchTeacherData: () => void;
-    showStatus: (type: 'success' | 'error', msg: string) => void;
-    onEditAssignment: (a: IAssignment) => void;
-    onViewSubmissions: (a: IAssignment) => void;
+interface AssignmentModalProps {
+    assignment: Assignment;
+    onClose: () => void;
+    onOpenGrading: (sub: Submission) => void;
+    refreshTrigger: number;
 }
 
-export default function AssignmentTab({ assignments, myClasses, subjectList, fetchTeacherData, showStatus, onEditAssignment, onViewSubmissions }: AssignmentProps) {
-    const [newTitle, setNewTitle] = useState('');
-    const [newDescription, setNewDescription] = useState('');
-    const [newMarks, setNewMarks] = useState<number>(100);
-    const [newDueDate, setNewDueDate] = useState('');
-    const [selectedClassId, setSelectedClassId] = useState('');
-    const [selectedSubjectId, setSelectedSubjectId] = useState('');
-    const [isDraft, setIsDraft] = useState(false);
-
-    const [isCreating, setIsCreating] = useState(false);
+export default function AssignmentModal({ assignment, onClose, onOpenGrading, refreshTrigger }: AssignmentModalProps) {
+    const [submissionsList, setSubmissionsList] = useState<Submission[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
 
-    const extractError = (err: any, fallbackMsg: string) => {
-        return err.response?.data?.message
-            || err.response?.data?.detail
-            || err.response?.data?.title
-            || (typeof err.response?.data === 'string' ? err.response.data : fallbackMsg);
-    };
+    useEffect(() => {
+        fetchSubmissions();
+    }, [assignment.id, refreshTrigger]);
 
-    const handleCreateAssignment = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-
-        if (isCreating) return;
-
-        if (!selectedClassId || !selectedSubjectId) return showStatus('error', 'Please select both class and subject.');
-
-        setIsCreating(true);
-
+    const fetchSubmissions = async () => {
+        setIsLoading(true);
+        setErrorMsg(null);
         try {
-            await api.post('/teacher/assignments', {
-                title: newTitle,
-                description: newDescription,
-                marks: Number(newMarks),
-                dueDate: newDueDate,
-                isDraft,
-                classDetailsId: selectedClassId,
-                subjectId: selectedSubjectId
-            });
-
-            showStatus('success', `Assignment "${newTitle}" created successfully!`);
-            setNewTitle(''); setNewDescription(''); setNewMarks(100); setNewDueDate(''); setSelectedClassId(''); setSelectedSubjectId(''); setIsDraft(false);
-            fetchTeacherData();
+            const res = await api.get(`/teacher/assignments/${assignment.id}/submissions`);
+            setSubmissionsList(extractArrayData(res));
         } catch (err: any) {
-            showStatus('error', extractError(err, 'Failed to create assignment.'));
+            const message = err.response?.data?.message || 'Failed to load submissions for this assignment. Please try again.';
+            setErrorMsg(message);
         } finally {
-            setIsCreating(false);
-        }
-    };
-
-    const handlePublishAssignment = async (assignment: IAssignment) => {
-        const result = await Swal.fire({ title: 'Publish Assignment?', text: `Are you sure you want to publish "${assignment.title}"?`, icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, Publish', background: '#0f172a', color: '#f8fafc', confirmButtonColor: '#10b981' });
-
-        if (result.isConfirmed) {
-            try {
-                await api.patch(`/teacher/assignments/${assignment.id}/publish?isDraft=false`);
-                showStatus('success', 'Assignment published!');
-                fetchTeacherData();
-            } catch (err: any) {
-                showStatus('error', extractError(err, 'Failed to publish assignment.'));
-            }
-        }
-    };
-
-    const handleDeleteAssignment = async (assignment: IAssignment) => {
-        const result = await Swal.fire({ title: 'Are you sure?', text: `Delete "${assignment.title}"?`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, Delete', background: '#0f172a', color: '#f8fafc', confirmButtonColor: '#e11d48' });
-
-        if (result.isConfirmed) {
-            try {
-                await api.delete(`/teacher/assignments/${assignment.id}`);
-                showStatus('success', 'Deleted!');
-                fetchTeacherData();
-            } catch (err: any) {
-                showStatus('error', extractError(err, 'Could not delete assignment.'));
-            }
+            setIsLoading(false);
         }
     };
 
     const start = (page - 1) * limit;
-    const paginatedAssignments = assignments.slice(start, start + limit);
+    const paginatedSubmissions = submissionsList.slice(start, start + limit);
 
     return (
-        <div className="space-y-8">
-            <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl space-y-5">
-                <h3 className="text-sm font-semibold text-slate-200">Create New Assignment</h3>
-                <form onSubmit={handleCreateAssignment} className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-1.5">Title</label>
-                            <input type="text" placeholder="e.g. Midterm Homework 01" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-1.5">Target Class</label>
-                            <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
-                                <option value="" className="bg-slate-900 text-slate-400">Select Class...</option>
-                                {myClasses.map((c) => (<option key={c.id} value={c.id} className="bg-slate-900 text-slate-200">{c.className} (Room: {c.roomNumber})</option>))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-slate-400 mb-1.5">Subject</label>
-                            <select value={selectedSubjectId} onChange={(e) => setSelectedSubjectId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer" required>
-                                <option value="" className="bg-slate-900 text-slate-400">Select Subject...</option>
-                                {subjectList.map((s) => (<option key={s.id} value={s.id} className="bg-slate-900 text-slate-200">{s.subjectName} ({s.subjectCode})</option>))}
-                            </select>
-                        </div>
-                    </div>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                <div className="flex justify-between items-center p-6 border-b border-slate-800 bg-slate-950/50 shrink-0">
                     <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1.5">Description / Instructions</label>
-                        <textarea placeholder="Write task details..." value={newDescription} onChange={(e) => setNewDescription(e.target.value)} rows={3} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required />
+                        <h3 className="text-base font-semibold text-slate-200">Submissions for: {assignment.title}</h3>
+                        <p className="text-xs text-slate-400 mt-1">Class: {assignment.className} • Subject: {assignment.subjectName}</p>
                     </div>
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-5 pt-2">
-                        <div className="flex flex-wrap items-center gap-5 w-full sm:w-auto">
-                            <div className="w-32">
-                                <label className="block text-xs font-medium text-slate-400 mb-1.5">Total Marks</label>
-                                <input type="number" value={newMarks} onChange={(e) => setNewMarks(Number(e.target.value))} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required />
-                            </div>
-                            <div className="w-48">
-                                <label className="block text-xs font-medium text-slate-400 mb-1.5">Due Date</label>
-                                <input type="date" value={newDueDate} min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]} onChange={(e) => setNewDueDate(e.target.value)} onClick={(e) => { if ('showPicker' in e.currentTarget) e.currentTarget.showPicker(); }} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer scheme-dark" required />
-                            </div>
-                            <div className="flex items-center gap-2 pt-6">
-                                <input type="checkbox" id="draftCheck" checked={isDraft} onChange={(e) => setIsDraft(e.target.checked)} className="w-4 h-4 accent-emerald-600 rounded cursor-pointer" />
-                                <label htmlFor="draftCheck" className="text-sm text-slate-300 cursor-pointer select-none">Save as Draft</label>
-                            </div>
+                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6">
+                    {isLoading ? (
+                        <div className="flex justify-center items-center py-20">
+                            <svg className="w-8 h-8 animate-spin text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         </div>
-
-                        <button
-                            type="submit"
-                            disabled={isCreating}
-                            className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg text-sm transition cursor-pointer shadow-md shadow-emerald-600/20 shrink-0 self-end disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2"
-                        >
-                            {isCreating ? (
-                                <>
-                                    <svg className="w-4 h-4 animate-spin text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                    Processing...
-                                </>
-                            ) : (
-                                isDraft ? 'Save Draft' : 'Publish Assignment'
+                    ) : errorMsg ? (
+                        <div className="flex flex-col justify-center items-center py-16">
+                            <div className="bg-rose-950/40 border border-rose-800/60 p-4 rounded-lg flex items-center gap-3 max-w-lg w-full">
+                                <svg className="w-6 h-6 text-rose-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                <div>
+                                    <h4 className="text-sm font-semibold text-rose-400">Error Loading Data</h4>
+                                    <p className="text-xs text-rose-300 mt-1">{errorMsg}</p>
+                                </div>
+                            </div>
+                            <button onClick={fetchSubmissions} className="mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-md transition cursor-pointer">
+                                Try Again
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto rounded-lg border border-slate-800">
+                            <table className="w-full text-left text-sm text-slate-300">
+                                <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800">
+                                    <tr>
+                                        <th className="p-4 font-semibold">Student Name</th>
+                                        <th className="p-4 font-semibold">Submitted At</th>
+                                        <th className="p-4 font-semibold">Status/Marks</th>
+                                        <th className="p-4 font-semibold">File</th>
+                                        <th className="p-4 font-semibold text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
+                                    {paginatedSubmissions.map(s => (
+                                        <tr key={s.id} className="hover:bg-slate-800/40 transition">
+                                            <td className="p-4 font-medium text-slate-200">{s.studentName}</td>
+                                            <td className="p-4 text-slate-400">{new Date(s.submissionDate).toLocaleDateString()}</td>
+                                            <td className="p-4">
+                                                {s.markAssigned !== null ? (
+                                                    <span className="text-emerald-400 font-semibold">{s.markAssigned} / {assignment.marks}</span>
+                                                ) : (
+                                                    <span className="text-amber-400 text-xs bg-amber-950/60 px-2.5 py-1 rounded border border-amber-800">Pending</span>
+                                                )}
+                                            </td>
+                                            <td className="p-4">
+                                                {s.filePath ? <a href={s.filePath} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">View File</a> : <span className="text-slate-500">N/A</span>}
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <button onClick={() => onOpenGrading(s)} className="px-3 py-1.5 bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900 text-xs font-medium rounded-md border border-emerald-800/80 transition cursor-pointer">
+                                                    {s.markAssigned !== null ? 'Edit Grade' : 'Grade Task'}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {!isLoading && submissionsList.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="p-8 text-center">
+                                                <div className="flex flex-col items-center justify-center text-slate-500">
+                                                    <span className="text-sm">No submissions received yet for this assignment.</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                            {!isLoading && submissionsList.length > 0 && (
+                                <Pagination totalItems={submissionsList.length} page={page} limit={limit} onPageChange={setPage} onLimitChange={l => { setLimit(l); setPage(1); }} />
                             )}
-                        </button>
-                    </div>
-                </form>
-            </div>
+                        </div>
+                    )}
+                </div>
 
-            <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl space-y-4">
-                <h3 className="text-sm font-semibold text-slate-200">Your Assignments ({assignments.length})</h3>
-                <div className="overflow-x-auto rounded-lg border border-slate-800">
-                    <table className="w-full text-left text-sm text-slate-300">
-                        <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-xs border-b border-slate-800">
-                            <tr>
-                                <th className="p-4">Title</th>
-                                <th className="p-4">Class</th>
-                                <th className="p-4">Marks</th>
-                                <th className="p-4">Due Date</th>
-                                <th className="p-4">Status</th>
-                                <th className="p-4 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
-                            {paginatedAssignments.map((a) => (
-                                <tr key={a.id} className="hover:bg-slate-800/30 transition">
-                                    <td className="p-4 font-medium text-slate-200">{a.title}</td>
-                                    <td className="p-4 text-slate-400">{a.className || 'N/A'}</td>
-                                    <td className="p-4 text-slate-300">{a.marks}</td>
-                                    <td className="p-4 text-slate-400">{a.dueDate}</td>
-                                    <td className="p-4">
-                                        <span className={`px-3 py-1 rounded-md text-xs font-medium ${a.isDraft ? 'bg-amber-950 text-amber-300 border border-amber-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}`}>
-                                            {a.isDraft ? 'Draft' : 'Published'}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-right">
-                                        <div className="flex justify-end items-center gap-2">
-                                            <button onClick={() => onViewSubmissions(a)} className="px-3 py-1.5 bg-violet-950/60 text-violet-400 hover:bg-violet-900 text-xs font-medium rounded-md border border-violet-800/80 transition cursor-pointer">Submissions</button>
-                                            <button onClick={() => onEditAssignment(a)} className="px-3 py-1.5 bg-indigo-950/60 text-indigo-400 hover:bg-indigo-900 text-xs font-medium rounded-md border border-indigo-800/80 transition cursor-pointer">Edit</button>
-                                            {a.isDraft && <button onClick={() => handlePublishAssignment(a)} className="px-3 py-1.5 bg-emerald-950/60 text-emerald-400 hover:bg-emerald-900 text-xs font-medium rounded-md border border-emerald-800/80 transition cursor-pointer">Publish</button>}
-                                            <button onClick={() => handleDeleteAssignment(a)} className="px-3 py-1.5 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-xs font-medium rounded-md border border-rose-800/80 transition cursor-pointer">Delete</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {assignments.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-slate-500 text-sm">No assignments created yet.</td></tr>}
-                        </tbody>
-                    </table>
-                    <Pagination totalItems={assignments.length} page={page} limit={limit} onPageChange={setPage} onLimitChange={(l) => { setLimit(l); setPage(1); }} />
+                <div className="p-4 border-t border-slate-800 bg-slate-950/50 flex justify-end shrink-0">
+                    <button onClick={onClose} className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium rounded-lg transition cursor-pointer">
+                        Close Window
+                    </button>
                 </div>
             </div>
         </div>
