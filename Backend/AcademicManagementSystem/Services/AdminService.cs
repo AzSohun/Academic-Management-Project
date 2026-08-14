@@ -124,19 +124,20 @@ namespace AcademicManagementSystem.Services
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                query = query.Where(s => s.User!.FirstName.Contains(search) ||
-                                     s.User!.LastName.Contains(search) ||
-                                     s.RollNo.Contains(search));
+                var searchTerm = search.Trim();
+                query = query.Where(s => s.User!.FirstName.Contains(searchTerm) ||
+                                     s.User!.LastName.Contains(searchTerm) ||
+                                     s.RollNo.Contains(searchTerm));
             }
 
             if (!string.IsNullOrWhiteSpace(className) && className != "All")
             {
-                query = query.Where(s => s.ClassDetails!.ClassName == className);
+                query = query.Where(s => s.ClassDetails!.ClassName == className.Trim());
             }
 
             if (!string.IsNullOrWhiteSpace(section) && section != "All")
             {
-                query = query.Where(s => s.Section == section);
+                query = query.Where(s => s.Section == section.Trim());
             }
 
             return await query.Select(s => new StudentDto
@@ -163,17 +164,18 @@ namespace AcademicManagementSystem.Services
 
             if (!string.IsNullOrWhiteSpace(dto.TeacherCode))
             {
+                var code = dto.TeacherCode.Trim();
                 var existingTeacher = await _context.Teachers
-                    .FirstOrDefaultAsync(t => t.TeacherCode == dto.TeacherCode && t.Id != id);
+                    .FirstOrDefaultAsync(t => t.TeacherCode == code && t.Id != id);
 
                 if (existingTeacher != null)
                 {
                     throw new Exception("This Teacher Code is already assigned to another teacher.");
                 }
+                teacher.TeacherCode = code;
             }
 
-            teacher.TeacherCode = dto.TeacherCode;
-            teacher.Specialization = dto.Specialization;
+            teacher.Specialization = dto.Specialization?.Trim();
             teacher.UpdatedDate = DateTime.UtcNow;
 
             teacher.Classes.Clear();
@@ -213,17 +215,18 @@ namespace AcademicManagementSystem.Services
 
             if (!string.IsNullOrWhiteSpace(dto.RollNo) && dto.ClassDetailsId.HasValue)
             {
+                var rollNo = dto.RollNo.Trim();
                 var existingStudent = await _context.Students
-                    .FirstOrDefaultAsync(s => s.RollNo == dto.RollNo && s.ClassDetailsId == dto.ClassDetailsId && s.Id != id);
+                    .FirstOrDefaultAsync(s => s.RollNo == rollNo && s.ClassDetailsId == dto.ClassDetailsId && s.Id != id);
 
                 if (existingStudent != null)
                 {
                     throw new Exception("This Roll Number is already assigned to another student in this class.");
                 }
+                student.RollNo = rollNo;
             }
 
-            student.RollNo = dto.RollNo;
-            student.Section = dto.Section;
+            student.Section = dto.Section?.Trim();
             student.ClassDetailsId = dto.ClassDetailsId;
 
             if (Enum.TryParse<Models.Group>(dto.Group, true, out var groupEnum))
@@ -247,14 +250,15 @@ namespace AcademicManagementSystem.Services
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                query = query.Where(t => t.User!.FirstName.Contains(search) ||
-                                     t.User!.LastName.Contains(search) ||
-                                     t.TeacherCode.Contains(search));
+                var searchTerm = search.Trim();
+                query = query.Where(t => t.User!.FirstName.Contains(searchTerm) ||
+                                     t.User!.LastName.Contains(searchTerm) ||
+                                     t.TeacherCode.Contains(searchTerm));
             }
 
             if (!string.IsNullOrWhiteSpace(specialization) && specialization != "All")
             {
-                query = query.Where(t => t.Specialization == specialization);
+                query = query.Where(t => t.Specialization == specialization.Trim());
             }
 
             return await query.Select(t => new TeacherDto
@@ -311,28 +315,34 @@ namespace AcademicManagementSystem.Services
 
         public async Task<ClassDetails> CreateClassAsync(CreateClassDto dto)
         {
-            // 1. Check if exact Class + Section already exists
+            var className = dto.ClassName.Trim();
+            var section = dto.Section?.Trim();
+
             var isClassSectionExist = await _context.ClassDetails.FirstOrDefaultAsync(c =>
-                c.ClassName == dto.ClassName && c.Section == dto.Section);
+                c.ClassName == className && c.Section == section);
 
             if (isClassSectionExist != null)
             {
-                var sectionName = string.IsNullOrWhiteSpace(dto.Section) ? "No Section" : dto.Section;
-                throw new Exception($"Class {dto.ClassName} with Section '{sectionName}' already exists.");
+                var sectionName = string.IsNullOrWhiteSpace(section) ? "No Section" : section;
+                throw new Exception($"Class {className} with Section '{sectionName}' already exists.");
             }
 
-            // 2. Strict Room Check: Room number kokhono-i onno kono class/section er sathe match korte parbe na
-            var existingRoom = await _context.ClassDetails.FirstOrDefaultAsync(c => c.RoomNumber == dto.RoomNumber);
-            if (existingRoom != null)
+            if (!string.IsNullOrWhiteSpace(dto.RoomNumber))
             {
-                throw new Exception($"Room number {dto.RoomNumber} is already assigned to Class {existingRoom.ClassName} ({existingRoom.Section}). Please use a different room.");
+                var roomNumber = dto.RoomNumber.Trim();
+                var existingRoom = await _context.ClassDetails.FirstOrDefaultAsync(c => c.RoomNumber == roomNumber);
+                if (existingRoom != null)
+                {
+                    var existingSection = string.IsNullOrWhiteSpace(existingRoom.Section) ? "No Section" : existingRoom.Section;
+                    throw new Exception($"Room number {roomNumber} is already assigned to Class {existingRoom.ClassName} ({existingSection}). Please use a different room.");
+                }
             }
 
             var newClass = new ClassDetails
             {
-                ClassName = dto.ClassName,
-                Section = dto.Section,
-                RoomNumber = dto.RoomNumber,
+                ClassName = className,
+                Section = section,
+                RoomNumber = dto.RoomNumber?.Trim(),
             };
 
             await _context.ClassDetails.AddAsync(newClass);
@@ -346,26 +356,34 @@ namespace AcademicManagementSystem.Services
             var existingClass = await _context.ClassDetails.FindAsync(id);
             if (existingClass == null) return null;
 
+            var className = dto.ClassName.Trim();
+            var section = dto.Section?.Trim();
+
             var isClassSectionExist = await _context.ClassDetails.FirstOrDefaultAsync(c =>
-                c.Id != id && c.ClassName == dto.ClassName && c.Section == dto.Section);
+                c.Id != id && c.ClassName == className && c.Section == section);
 
             if (isClassSectionExist != null)
             {
-                var sectionName = string.IsNullOrWhiteSpace(dto.Section) ? "No Section" : dto.Section;
-                throw new Exception($"Another class {dto.ClassName} with Section '{sectionName}' already exists.");
+                var sectionName = string.IsNullOrWhiteSpace(section) ? "No Section" : section;
+                throw new Exception($"Another class {className} with Section '{sectionName}' already exists.");
             }
 
-            var existingRoom = await _context.ClassDetails.FirstOrDefaultAsync(c =>
-                c.Id != id && c.RoomNumber == dto.RoomNumber);
-
-            if (existingRoom != null)
+            if (!string.IsNullOrWhiteSpace(dto.RoomNumber))
             {
-                throw new Exception($"Room number {dto.RoomNumber} is already occupied by Class {existingRoom.ClassName} ({existingRoom.Section}).");
+                var roomNumber = dto.RoomNumber.Trim();
+                var existingRoom = await _context.ClassDetails.FirstOrDefaultAsync(c =>
+                    c.Id != id && c.RoomNumber == roomNumber);
+
+                if (existingRoom != null)
+                {
+                    var existingSection = string.IsNullOrWhiteSpace(existingRoom.Section) ? "No Section" : existingRoom.Section;
+                    throw new Exception($"Room number {roomNumber} is already occupied by Class {existingRoom.ClassName} ({existingSection}).");
+                }
             }
 
-            existingClass.ClassName = dto.ClassName;
-            existingClass.Section = dto.Section;
-            existingClass.RoomNumber = dto.RoomNumber;
+            existingClass.ClassName = className;
+            existingClass.Section = section;
+            existingClass.RoomNumber = dto.RoomNumber?.Trim();
 
             await _context.SaveChangesAsync();
             return existingClass;
@@ -383,8 +401,11 @@ namespace AcademicManagementSystem.Services
 
         public async Task<Subject> CreateSubjectAsync(CreateSubjectDto dto)
         {
+            var subjectName = dto.SubjectName.Trim();
+            var subjectCode = dto.SubjectCode.Trim();
+
             var isSubjectExist = await _context.Subjects.FirstOrDefaultAsync(s =>
-                s.SubjectName == dto.SubjectName && s.SubjectCode == dto.SubjectCode);
+                s.SubjectName == subjectName || s.SubjectCode == subjectCode);
 
             if (isSubjectExist != null)
             {
@@ -393,9 +414,9 @@ namespace AcademicManagementSystem.Services
 
             var newSubject = new Subject
             {
-                SubjectName = dto.SubjectName,
-                SubjectDescription = dto.SubjectDescription,
-                SubjectCode = dto.SubjectCode,
+                SubjectName = subjectName,
+                SubjectDescription = dto.SubjectDescription?.Trim(),
+                SubjectCode = subjectCode,
             };
 
             await _context.Subjects.AddAsync(newSubject);
@@ -409,17 +430,20 @@ namespace AcademicManagementSystem.Services
             var subject = await _context.Subjects.FindAsync(id);
             if (subject == null) return null;
 
+            var subjectName = dto.SubjectName.Trim();
+            var subjectCode = dto.SubjectCode.Trim();
+
             var isDuplicate = await _context.Subjects.FirstOrDefaultAsync(s =>
-                s.Id != id && s.SubjectName == dto.SubjectName && s.SubjectCode == dto.SubjectCode);
+                s.Id != id && (s.SubjectName == subjectName || s.SubjectCode == subjectCode));
 
             if (isDuplicate != null)
             {
                 throw new Exception("Another subject with the same name or code already exists.");
             }
 
-            subject.SubjectName = dto.SubjectName;
-            subject.SubjectCode = dto.SubjectCode;
-            subject.SubjectDescription = dto.SubjectDescription;
+            subject.SubjectName = subjectName;
+            subject.SubjectCode = subjectCode;
+            subject.SubjectDescription = dto.SubjectDescription?.Trim();
 
             await _context.SaveChangesAsync();
             return subject;
