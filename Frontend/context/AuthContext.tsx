@@ -2,7 +2,6 @@
 import { api, setAccessToken } from "@/lib/api";
 import { LoginDto, SignUpDto } from "@/types/auth";
 import { useRouter, usePathname } from "next/navigation";
-import axios from "axios";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 export interface UserPayload {
@@ -53,10 +52,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         const initAuth = async () => {
-            try {
-                // Use the 'api' instance which already has the correct base URL
-                const res = await api.post<{ accessToken: string }>('/auth/refresh-token');
+            // 🎯 FIX: যদি ইউজার অলরেডি login বা signup পেজে থাকে, তবে ফালতু রিফ্রেশ টোকেন কল করার দরকার নেই। 
+            // এতে অপ্রয়োজনীয় নেটওয়ার্ক কল ও রিডাইরেক্ট লুপ চিরতরে বন্ধ হবে।
+            if (pathname === '/login' || pathname === '/signup') {
+                setIsLoading(false);
+                return;
+            }
 
+            try {
+                const res = await api.post<{ accessToken: string }>('/auth/refresh-token');
                 const accessToken = res.data.accessToken;
                 setToken(accessToken);
                 setAccessToken(accessToken);
@@ -71,7 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         };
         initAuth();
-    }, []);
+    }, [pathname]);
 
     useEffect(() => {
         const publicPaths = ['/', '/login', '/signup'];
