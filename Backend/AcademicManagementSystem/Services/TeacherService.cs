@@ -75,22 +75,22 @@ namespace AcademicManagementSystem.Services
         }
 
 
-        public async Task<IEnumerable<object>> GetMyClassesAsync(Guid userId)
+        public async Task<IEnumerable<TeacherClassDetailsDto>> GetMyClassesAsync(Guid userId)
         {
             var teacherExists = await _context.Teachers.AnyAsync(t => t.UserId == userId);
-            if (!teacherExists) return Enumerable.Empty<object>();
+            if (!teacherExists) return Enumerable.Empty<TeacherClassDetailsDto>();
 
             return await _context.Teachers
                 .Where(t => t.UserId == userId)
-                .SelectMany(t => t.Classes.Select(c => new
+                .SelectMany(t => t.Classes.Select(c => new TeacherClassDetailsDto
                 {
                     Id = c.Id,
-                    ClassName = c.ClassName,
+                    ClassName = string.IsNullOrWhiteSpace(c.Section) ? c.ClassName : $"{c.ClassName} ({c.Section})",
                     RoomNumber = c.RoomNumber,
                     StudentCount = _context.Students.Count(s => s.ClassDetailsId == c.Id),
                     Subjects = c.Subjects
                         .Where(s => t.Subjects.Contains(s))
-                        .Select(s => new
+                        .Select(s => new TeacherSubjectDto
                         {
                             Id = s.Id,
                             SubjectName = s.SubjectName,
@@ -99,7 +99,7 @@ namespace AcademicManagementSystem.Services
 
                     Students = _context.Students
                         .Where(s => s.ClassDetailsId == c.Id)
-                        .Select(s => new
+                        .Select(s => new TeacherStudentDto
                         {
                             Id = s.Id,
                             FullName = s.User != null ? s.User.FirstName + " " + s.User.LastName : "Unknown Student",

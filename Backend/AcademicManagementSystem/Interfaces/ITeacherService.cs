@@ -1,4 +1,5 @@
 ﻿using AcademicManagementSystem.DTOs.AssignmentDtos;
+using AcademicManagementSystem.DTOs.Class;
 using AcademicManagementSystem.DTOs.Subject;
 using AcademicManagementSystem.DTOs.SubmissionDtos;
 using AcademicManagementSystem.DTOs.Teacher;
@@ -13,7 +14,7 @@ namespace AcademicManagementSystem.Interfaces
         Task<TeacherProfileResponseDto?> GetMyProfileAsync(Guid userId);
         Task<bool> UpdateMyProfileAsync(Guid userId, UpdateTeacherProfileDto dto);
 
-        Task<IEnumerable<object>> GetMyClassesAsync(Guid userId);
+        Task<IEnumerable<TeacherClassDetailsDto>> GetMyClassesAsync(Guid userId);
 
         Task<IEnumerable<SubjectResponseDto>> GetMySubjectsAsync(Guid userId);
 
