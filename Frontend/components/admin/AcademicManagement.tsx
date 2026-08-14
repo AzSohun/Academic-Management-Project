@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import Swal from 'sweetalert2';
 import Pagination from '@/components/common/Pagination';
 import { User, QueryResultDto, StudentOption, TeacherOption, ClassOption, SubjectOption, getRoleNumeric, getGenderName } from '@/interfaces/admin';
 
@@ -122,9 +123,20 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
             return;
         }
 
-        const isConfirmed = window.confirm(`Are you sure you want to delete user "${userItem.firstName}"?`);
+        const result = await Swal.fire({
+            title: 'Are you sure?',
+            text: `Delete user "${userItem.firstName} ${userItem.lastName}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel',
+            background: '#0f172a',
+            color: '#f8fafc',
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#334155'
+        });
 
-        if (isConfirmed) {
+        if (result.isConfirmed) {
             try {
                 await api.delete(`/admin/users/${userItem.id}`);
                 setTableMsg({ text: 'User deleted successfully.', type: 'success' });
@@ -146,7 +158,7 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                         <select
                             value={selectedStudentId}
                             onChange={(e) => setSelectedStudentId(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
                             style={{ colorScheme: 'dark' }}
                             required
                         >
@@ -156,7 +168,7 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                         <select
                             value={selectedStudentClassId}
                             onChange={(e) => setSelectedStudentClassId(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
                             style={{ colorScheme: 'dark' }}
                             required
                         >
@@ -191,7 +203,7 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                         <select
                             value={unifiedTeacherId}
                             onChange={(e) => setUnifiedTeacherId(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
                             style={{ colorScheme: 'dark' }}
                             required
                         >
@@ -201,7 +213,7 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                         <select
                             value={unifiedClassId}
                             onChange={(e) => setUnifiedClassId(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
                             style={{ colorScheme: 'dark' }}
                             required
                         >
@@ -215,7 +227,7 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                         <select
                             value={unifiedSubjectId}
                             onChange={(e) => setUnifiedSubjectId(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
                             style={{ colorScheme: 'dark' }}
                             required
                         >
