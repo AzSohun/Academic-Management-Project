@@ -78,9 +78,17 @@ namespace AcademicManagementSystem.Services
                     Gender = (DTOs.UserDtos.Gender?)u.Gender,
                     IsDeleted = u.IsDeleted,
 
-                    AllocatedClass = isStudent && student?.ClassDetails != null ? student.ClassDetails.ClassName : string.Empty,
-                    TeacherClasses = isTeacher && teacher?.Classes != null ? teacher.Classes.Select(c => c.ClassName).ToList() : new List<string>(),
-                    TeacherSubjects = isTeacher && teacher?.Subjects != null ? teacher.Subjects.Select(s => s.SubjectName).ToList() : new List<string>()
+                    AllocatedClass = isStudent && student?.ClassDetails != null
+                        ? (string.IsNullOrWhiteSpace(student.ClassDetails.Section) ? student.ClassDetails.ClassName : $"{student.ClassDetails.ClassName} ({student.ClassDetails.Section})")
+                        : string.Empty,
+
+                    TeacherClasses = isTeacher && teacher?.Classes != null
+                        ? teacher.Classes.Select(c => string.IsNullOrWhiteSpace(c.Section) ? c.ClassName : $"{c.ClassName} ({c.Section})").ToList()
+                        : new List<string>(),
+
+                    TeacherSubjects = isTeacher && teacher?.Subjects != null
+                        ? teacher.Subjects.Select(s => s.SubjectName).ToList()
+                        : new List<string>()
                 };
             }).ToList();
 
@@ -257,7 +265,8 @@ namespace AcademicManagementSystem.Services
                 Email = t.User != null ? t.User.Email : string.Empty,
                 TeacherCode = t.TeacherCode,
                 Specialization = t.Specialization ?? "General",
-                AssignedClasses = t.Classes.Select(c => c.ClassName).ToList(),
+                // Updated line below to include section
+                AssignedClasses = t.Classes.Select(c => string.IsNullOrWhiteSpace(c.Section) ? c.ClassName : $"{c.ClassName} ({c.Section})").ToList(),
                 AssignedSubjects = t.Subjects.Select(s => s.SubjectName).ToList()
             }).ToListAsync();
         }
@@ -515,7 +524,8 @@ namespace AcademicManagementSystem.Services
                     Qualification = t.Qualification,
                     Specialization = t.Specialization,
                     Experience = t.Experience,
-                    AssignedClasses = t.Classes.Select(c => c.ClassName).ToList(),
+                    // Updated line below to include section
+                    AssignedClasses = t.Classes.Select(c => string.IsNullOrWhiteSpace(c.Section) ? c.ClassName : $"{c.ClassName} ({c.Section})").ToList(),
                     AssignedSubjects = t.Subjects.Select(s => s.SubjectName).ToList()
                 }).ToListAsync();
         }
@@ -605,7 +615,7 @@ namespace AcademicManagementSystem.Services
                     DueDate = a.DueDate,
                     IsDraft = a.IsDraft,
                     SubjectName = a.Subject != null ? a.Subject.SubjectName : string.Empty,
-                    ClassName = a.ClassDetails != null ? a.ClassDetails.ClassName : string.Empty,
+                    ClassName = a.ClassDetails != null ? (string.IsNullOrWhiteSpace(a.ClassDetails.Section) ? a.ClassDetails.ClassName : $"{a.ClassDetails.ClassName} ({a.ClassDetails.Section})") : string.Empty,
                     TeacherName = a.Teacher != null && a.Teacher.User != null ? $"{a.Teacher.User.FirstName} {a.Teacher.User.LastName}" : string.Empty,
                 }).ToListAsync();
 
