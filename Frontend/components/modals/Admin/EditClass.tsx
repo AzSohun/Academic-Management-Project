@@ -11,12 +11,17 @@ interface EditClassProps {
 
 export default function EditClass({ classItem, onClose, onSuccess, showStatus }: EditClassProps) {
     const [editClassName, setEditClassName] = useState(classItem.className);
+    const [editSection, setEditSection] = useState(classItem.section || '');
     const [editRoomNumber, setEditRoomNumber] = useState(classItem.roomNumber);
 
     const handleUpdateClass = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.put(`/admin/classes/${classItem.id}`, { className: editClassName, roomNumber: editRoomNumber });
+            await api.put(`/admin/classes/${classItem.id}`, {
+                className: editClassName,
+                section: editSection,
+                roomNumber: editRoomNumber
+            });
             showStatus('success', `Class updated successfully!`);
             onSuccess();
         } catch { showStatus('error', 'Failed to update class.'); }
@@ -30,8 +35,18 @@ export default function EditClass({ classItem, onClose, onSuccess, showStatus }:
                     <button onClick={onClose} className="text-slate-400 hover:text-white text-base cursor-pointer">✕</button>
                 </div>
                 <form onSubmit={handleUpdateClass} className="space-y-3">
-                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Class Name</label><input type="text" value={editClassName} onChange={(e) => setEditClassName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required /></div>
-                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Room Number</label><input type="text" value={editRoomNumber} onChange={(e) => setEditRoomNumber(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required /></div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Class Name</label>
+                        <input type="text" value={editClassName} onChange={(e) => setEditClassName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Section</label>
+                        <input type="text" value={editSection} onChange={(e) => setEditSection(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Room Number</label>
+                        <input type="text" value={editRoomNumber} onChange={(e) => setEditRoomNumber(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required />
+                    </div>
                     <div className="flex justify-end gap-2 pt-3">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition cursor-pointer">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-500 transition cursor-pointer">Save Changes</button>

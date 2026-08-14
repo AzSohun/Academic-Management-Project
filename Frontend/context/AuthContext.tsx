@@ -54,11 +54,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         const initAuth = async () => {
             try {
-                const res = await axios.post<{ accessToken: string }>(
-                    'https://localhost:7015/api/auth/refresh-token',
-                    {},
-                    { withCredentials: true }
-                );
+                // Use the 'api' instance which already has the correct base URL
+                const res = await api.post<{ accessToken: string }>('/auth/refresh-token');
+
                 const accessToken = res.data.accessToken;
                 setToken(accessToken);
                 setAccessToken(accessToken);

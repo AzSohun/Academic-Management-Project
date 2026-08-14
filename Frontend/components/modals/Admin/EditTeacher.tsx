@@ -23,8 +23,15 @@ export default function EditTeacher({ teacher, classList, subjectList, onClose, 
         if (code.startsWith('TIC-')) code = code.substring(4);
         setEditTeacherCodeNumber(code);
 
-        const currentClassIds = teacher.assignedClasses.map(name => classList.find(c => c.className === name)?.id).filter(Boolean) as string[];
-        setEditTeacherClassIds(currentClassIds);
+        const currentClassIds = teacher.assignedClasses.map(name => {
+            const found = classList.find(c => {
+                const fullName = `${c.className}${c.section ? ` (${c.section})` : ''}`;
+                return fullName === name || c.className === name;
+            });
+            return found?.id;
+        }).filter(Boolean) as string[];
+
+        setEditTeacherClassIds(Array.from(new Set(currentClassIds)));
 
         const currentSubjectIds = teacher.assignedSubjects.map(name => subjectList.find(s => s.subjectName === name)?.id).filter(Boolean) as string[];
         setEditTeacherSubjectIds(currentSubjectIds);
@@ -85,7 +92,7 @@ export default function EditTeacher({ teacher, classList, subjectList, onClose, 
                                             }}
                                             className="w-4 h-4 accent-indigo-500 cursor-pointer"
                                         />
-                                        {c.className}
+                                        {c.className} {c.section ? `(${c.section})` : ''}
                                     </label>
                                 ))}
                             </div>

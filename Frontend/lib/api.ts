@@ -1,7 +1,7 @@
 import axios from "axios";
 
 export const api = axios.create({
-    baseURL: `https://localhost:7015/api`,
+    baseURL: `${process.env.NEXT_PUBLIC_API_URL}/api`,
     withCredentials: true,
     headers: {
         "Content-Type": "application/json",
@@ -30,7 +30,7 @@ const refreshAccessToken = async (): Promise<string> => {
     if (!refreshPromise) {
         refreshPromise = axios
             .post<{ accessToken: string }>(
-                "https://localhost:7015/api/auth/refresh-token",
+                `${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh-token`,
                 {},
                 { withCredentials: true }
             )
@@ -51,7 +51,13 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+
+        if (
+            error.response?.status === 401 &&
+            !originalRequest._retry &&
+            !originalRequest.url?.includes('/auth/login') &&
+            !originalRequest.url?.includes('/auth/refresh-token')
+        ) {
             originalRequest._retry = true;
 
             try {

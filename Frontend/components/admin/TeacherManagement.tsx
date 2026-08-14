@@ -16,7 +16,6 @@ export default function TeacherManagement({ detailedTeachers, classList, subject
     const [limit, setLimit] = useState(10);
     const [editingTeacher, setEditingTeacher] = useState<TeacherDetailed | null>(null);
 
-    // --- Search, Filter & Sort States ---
     const [searchTerm, setSearchTerm] = useState('');
     const [specializationFilter, setSpecializationFilter] = useState('All');
     const [sortBy, setSortBy] = useState('name_asc');
@@ -30,17 +29,14 @@ export default function TeacherManagement({ detailedTeachers, classList, subject
         setPage(1);
     };
 
-    // Extract unique specializations for the dropdown dynamically
     const specializations = useMemo(() => {
         const specs = detailedTeachers.map(t => t.specialization || 'General');
         return ['All', ...Array.from(new Set(specs))];
     }, [detailedTeachers]);
 
-    // Apply Search, Filter, and Sorting
     const filteredAndSortedTeachers = useMemo(() => {
         let result = [...detailedTeachers];
 
-        // 1. Search Logic
         if (searchTerm.trim()) {
             const lowerSearch = searchTerm.toLowerCase();
             result = result.filter(t =>
@@ -51,12 +47,10 @@ export default function TeacherManagement({ detailedTeachers, classList, subject
             );
         }
 
-        // 2. Specialization Filter Logic
         if (specializationFilter !== 'All') {
             result = result.filter(t => (t.specialization || 'General') === specializationFilter);
         }
 
-        // 3. Sorting Logic
         result.sort((a, b) => {
             const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim();
             const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim();
@@ -70,7 +64,6 @@ export default function TeacherManagement({ detailedTeachers, classList, subject
         return result;
     }, [detailedTeachers, searchTerm, specializationFilter, sortBy]);
 
-    // Reset pagination to page 1 whenever filters change
     useEffect(() => {
         setPage(1);
     }, [searchTerm, specializationFilter, sortBy]);
@@ -84,7 +77,6 @@ export default function TeacherManagement({ detailedTeachers, classList, subject
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                     <h3 className="text-sm font-semibold text-slate-200">Teachers Directory & Allocations</h3>
 
-                    {/* Controls: Search, Filter, Sort, Reset */}
                     <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
                         <input
                             type="text"
@@ -98,6 +90,7 @@ export default function TeacherManagement({ detailedTeachers, classList, subject
                             value={specializationFilter}
                             onChange={(e) => setSpecializationFilter(e.target.value)}
                             className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                            style={{ colorScheme: 'dark' }}
                         >
                             {specializations.map(spec => (
                                 <option key={spec} value={spec}>{spec === 'All' ? 'All Specializations' : spec}</option>
@@ -108,6 +101,7 @@ export default function TeacherManagement({ detailedTeachers, classList, subject
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
                             className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                            style={{ colorScheme: 'dark' }}
                         >
                             <option value="name_asc">Sort by Name (A-Z)</option>
                             <option value="name_desc">Sort by Name (Z-A)</option>
@@ -144,7 +138,7 @@ export default function TeacherManagement({ detailedTeachers, classList, subject
                                     <td className="p-3 font-medium text-slate-200">{t.firstName} {t.lastName}</td>
                                     <td className="p-3 font-mono text-emerald-400">{t.teacherCode || 'N/A'}</td>
                                     <td className="p-3 text-slate-300">{t.specialization || 'General'}</td>
-                                    <td className="p-3 text-emerald-300/90">{t.assignedClasses?.length > 0 ? t.assignedClasses.join(', ') : 'None'}</td>
+                                    <td className="p-3 text-emerald-300/90">{t.assignedClasses?.length > 0 ? Array.from(new Set(t.assignedClasses)).join(', ') : 'None'}</td>
                                     <td className="p-3 text-violet-300/90">{t.assignedSubjects?.length > 0 ? t.assignedSubjects.join(', ') : 'None'}</td>
                                     <td className="p-3 text-right">
                                         <button

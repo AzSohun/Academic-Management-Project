@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import Swal from 'sweetalert2';
@@ -102,13 +104,29 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                     <h3 className="text-sm font-semibold text-slate-200">Assign Student to Class</h3>
                     <form onSubmit={handleAssignStudent} className="space-y-3">
-                        <select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required>
+                        <select
+                            value={selectedStudentId}
+                            onChange={(e) => setSelectedStudentId(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                            style={{ colorScheme: 'dark' }}
+                            required
+                        >
                             <option value="">Select Student...</option>
-                            {studentsList.map((st) => <option key={st.id} value={st.id}>{st.fullName}</option>)}
+                            {studentsList.map((st: any) => <option key={st.id} value={st.id}>{st.firstName} {st.lastName}</option>)}
                         </select>
-                        <select value={selectedStudentClassId} onChange={(e) => setSelectedStudentClassId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required>
+                        <select
+                            value={selectedStudentClassId}
+                            onChange={(e) => setSelectedStudentClassId(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                            style={{ colorScheme: 'dark' }}
+                            required
+                        >
                             <option value="">Select Target Class...</option>
-                            {classList.map((c) => <option key={c.id} value={c.id}>{c.className} ({c.roomNumber})</option>)}
+                            {classList.map((c: any) => (
+                                <option key={c.id} value={c.id}>
+                                    {c.className} {c.section ? `(${c.section})` : ''} - Rm: {c.roomNumber}
+                                </option>
+                            ))}
                         </select>
                         <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg text-sm transition cursor-pointer">Assign Student</button>
                     </form>
@@ -123,17 +141,39 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                         </div>
                     </div>
                     <form onSubmit={handleUnifiedTeacherAllocation} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <select value={unifiedTeacherId} onChange={(e) => setUnifiedTeacherId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                        <select
+                            value={unifiedTeacherId}
+                            onChange={(e) => setUnifiedTeacherId(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                            style={{ colorScheme: 'dark' }}
+                            required
+                        >
                             <option value="">Select Teacher...</option>
-                            {teachersList.map((t) => <option key={t.id} value={t.id}>{t.fullName}</option>)}
+                            {teachersList.map((t: any) => <option key={t.id} value={t.id}>{t.firstName} {t.lastName}</option>)}
                         </select>
-                        <select value={unifiedClassId} onChange={(e) => setUnifiedClassId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                        <select
+                            value={unifiedClassId}
+                            onChange={(e) => setUnifiedClassId(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                            style={{ colorScheme: 'dark' }}
+                            required
+                        >
                             <option value="">Select Class...</option>
-                            {classList.map((c) => <option key={c.id} value={c.id}>{c.className}</option>)}
+                            {classList.map((c: any) => (
+                                <option key={c.id} value={c.id}>
+                                    {c.className} {c.section ? `(${c.section})` : ''}
+                                </option>
+                            ))}
                         </select>
-                        <select value={unifiedSubjectId} onChange={(e) => setUnifiedSubjectId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500" required>
+                        <select
+                            value={unifiedSubjectId}
+                            onChange={(e) => setUnifiedSubjectId(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500"
+                            style={{ colorScheme: 'dark' }}
+                            required
+                        >
                             <option value="">Select Subject...</option>
-                            {subjectList.map((s) => <option key={s.id} value={s.id}>{s.subjectName}</option>)}
+                            {subjectList.map((s: any) => <option key={s.id} value={s.id}>{s.subjectName}</option>)}
                         </select>
                         <button type="submit" className={`md:col-span-3 text-white font-medium py-2.5 rounded-lg text-sm transition cursor-pointer ${unifiedMode === 'assign' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'}`}>
                             {unifiedMode === 'assign' ? 'Confirm Allocation' : 'Remove Allocation'}
@@ -166,8 +206,16 @@ export default function AcademicManagement({ currentUser, studentsList, teachers
                                     <tr key={u.id} className="hover:bg-slate-800/30 transition">
                                         <td className="p-3 font-medium text-slate-200">{u.firstName} {u.lastName}</td><td className="p-3 text-slate-400">{u.email}</td><td className="p-3 text-slate-400">{getGenderName(u.gender)}</td>
                                         <td className="p-3">
-                                            <select value={getRoleNumeric(u.role)} onChange={(e) => handleRoleChange(u.id, Number(e.target.value))} disabled={isSelf} className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-indigo-300 focus:outline-none focus:border-indigo-500 cursor-pointer disabled:opacity-60">
-                                                <option value={0}>Admin</option><option value={1}>Teacher</option><option value={2}>Student</option>
+                                            <select
+                                                value={getRoleNumeric(u.role)}
+                                                onChange={(e) => handleRoleChange(u.id, Number(e.target.value))}
+                                                disabled={isSelf}
+                                                className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-indigo-300 focus:outline-none focus:border-indigo-500 cursor-pointer disabled:opacity-60"
+                                                style={{ colorScheme: 'dark' }}
+                                            >
+                                                <option value={0}>Admin</option>
+                                                <option value={1}>Teacher</option>
+                                                <option value={2}>Student</option>
                                             </select>
                                         </td>
                                         <td className="p-3 text-right">

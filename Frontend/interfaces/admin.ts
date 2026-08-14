@@ -36,12 +36,14 @@ export interface ClassOption {
     id: string;
     className: string;
     roomNumber: string;
+    section: string
 }
 
 export interface SubjectOption {
     id: string;
     subjectName: string;
     subjectCode: string;
+    subjectDescription: string;
 }
 
 export interface Assignment {

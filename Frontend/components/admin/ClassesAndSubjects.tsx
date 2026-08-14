@@ -17,6 +17,7 @@ interface ClassesAndSubjectsProps {
 
 export default function ClassesAndSubjects({ classList, subjectList, fetchDashboardData, showStatus }: ClassesAndSubjectsProps) {
     const [className, setClassName] = useState('');
+    const [section, setSection] = useState('');
     const [roomNumber, setRoomNumber] = useState('');
     const [subjectName, setSubjectName] = useState('');
     const [subjectCode, setSubjectCode] = useState('');
@@ -36,9 +37,9 @@ export default function ClassesAndSubjects({ classList, subjectList, fetchDashbo
     const handleCreateClass = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.post('/admin/classes', { className, roomNumber });
+            await api.post('/admin/classes', { className, section, roomNumber });
             showStatus('success', `Class created successfully!`);
-            setClassName(''); setRoomNumber(''); fetchDashboardData();
+            setClassName(''); setSection(''); setRoomNumber(''); fetchDashboardData();
         } catch { showStatus('error', 'Failed to create class.'); }
     };
 
@@ -84,8 +85,11 @@ export default function ClassesAndSubjects({ classList, subjectList, fetchDashbo
                 <div className="bg-slate-900/50 border border-slate-800 p-5 rounded-xl space-y-4">
                     <h3 className="text-sm font-semibold text-slate-200">Create New Class</h3>
                     <form onSubmit={handleCreateClass} className="space-y-3">
-                        <input type="text" placeholder="Class Name" value={className} onChange={(e) => setClassName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:border-indigo-500 outline-none" required />
-                        <input type="text" placeholder="Room Number" value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:border-indigo-500 outline-none" required />
+                        <input type="text" placeholder="Class Name (e.g. 10)" value={className} onChange={(e) => setClassName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:border-indigo-500 outline-none" required />
+                        <div className="grid grid-cols-2 gap-3">
+                            <input type="text" placeholder="Section (e.g. A)" value={section} onChange={(e) => setSection(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:border-indigo-500 outline-none" required />
+                            <input type="text" placeholder="Room Number (e.g. 102)" value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:border-indigo-500 outline-none" required />
+                        </div>
                         <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-lg text-sm cursor-pointer">Create Class</button>
                     </form>
                 </div>
@@ -111,57 +115,84 @@ export default function ClassesAndSubjects({ classList, subjectList, fetchDashbo
                         </div>
                     </div>
                     <form onSubmit={handleClassSubjectAction} className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <select value={assignClassId} onChange={(e) => setAssignClassId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm outline-none" required><option value="">Select Target Class...</option>{classList.map((c) => <option key={c.id} value={c.id}>{c.className}</option>)}</select>
-                        <select value={assignSubjectIdToClass} onChange={(e) => setAssignSubjectIdToClass(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm outline-none" required><option value="">Select Subject...</option>{subjectList.map((s) => <option key={s.id} value={s.id}>{s.subjectName}</option>)}</select>
+                        <select value={assignClassId} onChange={(e) => setAssignClassId(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm outline-none" required style={{ colorScheme: 'dark' }}>
+                            <option value="">Select Target Class...</option>
+                            {classList.map((c: any) => <option key={c.id} value={c.id}>{c.className} {c.section ? `(${c.section})` : ''}</option>)}
+                        </select>
+                        <select value={assignSubjectIdToClass} onChange={(e) => setAssignSubjectIdToClass(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm outline-none" required style={{ colorScheme: 'dark' }}>
+                            <option value="">Select Subject...</option>
+                            {subjectList.map((s) => <option key={s.id} value={s.id}>{s.subjectName}</option>)}
+                        </select>
                         <button type="submit" className={`w-full text-white font-medium py-2.5 rounded-lg text-sm cursor-pointer ${classSubjectMode === 'assign' ? 'bg-indigo-600' : 'bg-rose-600'}`}>Confirm</button>
                     </form>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* 🟢 FIXED FORMATTING HERE TO AVOID HYDRATION ERROR */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl flex flex-col">
-                    <div className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div className="bg-slate-900/50 border border-slate-800 rounded-xl flex flex-col overflow-hidden">
+                    <div className="p-5 border-b border-slate-800/60">
                         <h3 className="text-sm font-semibold text-slate-200">Classes ({classList.length})</h3>
                     </div>
-                    <table className="w-full text-left text-sm text-slate-300">
-                        <tbody className="divide-y divide-slate-800 bg-slate-900/20">
-                            {classList.slice((classPage - 1) * classLimit, classPage * classLimit).map((c) => (
-                                <tr key={c.id} className="hover:bg-slate-800/30 transition">
-                                    <td className="p-3 pl-5">
-                                        {c.className} (Rm: {c.roomNumber})
-                                    </td>
-                                    <td className="p-3 text-right">
-                                        <button onClick={() => setEditingClass(c)} className="px-3 py-1.5 bg-indigo-950/60 text-indigo-400 hover:bg-indigo-900 text-xs font-medium rounded border border-indigo-800/80 mr-2 cursor-pointer">Edit</button>
-                                        <button onClick={() => handleDeleteClass(c)} className="px-3 py-1.5 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-xs font-medium rounded border border-rose-800/80 cursor-pointer">Del</button>
-                                    </td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-slate-300">
+                            <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-xs border-b border-slate-800">
+                                <tr>
+                                    <th className="p-3 pl-5">Class</th>
+                                    <th className="p-3">Section</th>
+                                    <th className="p-3">Room</th>
+                                    <th className="p-3 text-right pr-5">Action</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    <Pagination totalItems={classList.length} page={classPage} limit={classLimit} onPageChange={setClassPage} onLimitChange={l => { setClassLimit(l); setClassPage(1); }} />
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
+                                {classList.slice((classPage - 1) * classLimit, classPage * classLimit).map((c: any) => (
+                                    <tr key={c.id} className="hover:bg-slate-800/30 transition">
+                                        <td className="p-3 pl-5 font-medium text-slate-200">{c.className}</td>
+                                        <td className="p-3 text-slate-400">{c.section || '-'}</td>
+                                        <td className="p-3 text-slate-400">{c.roomNumber}</td>
+                                        <td className="p-3 text-right pr-5">
+                                            <button onClick={() => setEditingClass(c)} className="px-3 py-1.5 bg-indigo-950/60 text-indigo-400 hover:bg-indigo-900 text-xs font-medium rounded border border-indigo-800/80 mr-2 cursor-pointer">Edit</button>
+                                            <button onClick={() => handleDeleteClass(c)} className="px-3 py-1.5 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-xs font-medium rounded border border-rose-800/80 cursor-pointer">Del</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="mt-auto border-t border-slate-800/60">
+                        <Pagination totalItems={classList.length} page={classPage} limit={classLimit} onPageChange={setClassPage} onLimitChange={l => { setClassLimit(l); setClassPage(1); }} />
+                    </div>
                 </div>
 
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl flex flex-col">
-                    <div className="p-5">
+                <div className="bg-slate-900/50 border border-slate-800 rounded-xl flex flex-col overflow-hidden">
+                    <div className="p-5 border-b border-slate-800/60">
                         <h3 className="text-sm font-semibold text-slate-200">Subjects ({subjectList.length})</h3>
                     </div>
-                    <table className="w-full text-left text-sm text-slate-300">
-                        <tbody className="divide-y divide-slate-800 bg-slate-900/20">
-                            {subjectList.slice((subjectPage - 1) * subjectLimit, subjectPage * subjectLimit).map((s) => (
-                                <tr key={s.id} className="hover:bg-slate-800/30 transition">
-                                    <td className="p-3 pl-5">
-                                        {s.subjectName} ({s.subjectCode})
-                                    </td>
-                                    <td className="p-3 text-right">
-                                        <button onClick={() => setEditingSubject(s)} className="px-3 py-1.5 bg-indigo-950/60 text-indigo-400 hover:bg-indigo-900 text-xs font-medium rounded border border-indigo-800/80 mr-2 cursor-pointer">Edit</button>
-                                        <button onClick={() => handleDeleteSubject(s)} className="px-3 py-1.5 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-xs font-medium rounded border border-rose-800/80 cursor-pointer">Del</button>
-                                    </td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-slate-300">
+                            <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-xs border-b border-slate-800">
+                                <tr>
+                                    <th className="p-3 pl-5">Subject</th>
+                                    <th className="p-3">Code</th>
+                                    <th className="p-3 text-right pr-5">Action</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    <Pagination totalItems={subjectList.length} page={subjectPage} limit={subjectLimit} onPageChange={setSubjectPage} onLimitChange={l => { setSubjectLimit(l); setSubjectPage(1); }} />
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/60 bg-slate-900/20">
+                                {subjectList.slice((subjectPage - 1) * subjectLimit, subjectPage * subjectLimit).map((s) => (
+                                    <tr key={s.id} className="hover:bg-slate-800/30 transition">
+                                        <td className="p-3 pl-5 font-medium text-slate-200">{s.subjectName}</td>
+                                        <td className="p-3 text-slate-400">{s.subjectCode}</td>
+                                        <td className="p-3 text-right pr-5">
+                                            <button onClick={() => setEditingSubject(s)} className="px-3 py-1.5 bg-indigo-950/60 text-indigo-400 hover:bg-indigo-900 text-xs font-medium rounded border border-indigo-800/80 mr-2 cursor-pointer">Edit</button>
+                                            <button onClick={() => handleDeleteSubject(s)} className="px-3 py-1.5 bg-rose-950/60 text-rose-400 hover:bg-rose-900 text-xs font-medium rounded border border-rose-800/80 cursor-pointer">Del</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="mt-auto border-t border-slate-800/60">
+                        <Pagination totalItems={subjectList.length} page={subjectPage} limit={subjectLimit} onPageChange={setSubjectPage} onLimitChange={l => { setSubjectLimit(l); setSubjectPage(1); }} />
+                    </div>
                 </div>
             </div>
 

@@ -12,7 +12,7 @@ interface EditSubjectProps {
 export default function EditSubject({ subject, onClose, onSuccess, showStatus }: EditSubjectProps) {
     const [editSubjectName, setEditSubjectName] = useState(subject.subjectName);
     const [editSubjectCode, setEditSubjectCode] = useState(subject.subjectCode);
-    const [editSubjectDescription, setEditSubjectDescription] = useState('');
+    const [editSubjectDescription, setEditSubjectDescription] = useState(subject.subjectDescription);
 
     const handleUpdateSubject = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,9 +31,21 @@ export default function EditSubject({ subject, onClose, onSuccess, showStatus }:
                     <button onClick={onClose} className="text-slate-400 hover:text-white text-base cursor-pointer">✕</button>
                 </div>
                 <form onSubmit={handleUpdateSubject} className="space-y-3">
-                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Subject Name</label><input type="text" value={editSubjectName} onChange={(e) => setEditSubjectName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required /></div>
-                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Subject Code</label><input type="text" value={editSubjectCode} onChange={(e) => setEditSubjectCode(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required /></div>
-                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Description</label><input type="text" placeholder="Overview..." value={editSubjectDescription} onChange={(e) => setEditSubjectDescription(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" /></div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                            Subject Name
+                        </label>
+                        <input type="text" value={editSubjectName} onChange={(e) => setEditSubjectName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Subject Code</label>
+                        <input type="text" value={editSubjectCode} onChange={(e) => setEditSubjectCode(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" required />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Description</label>
+                        <input type="text" placeholder="Overview..." value={editSubjectDescription} onChange={(e) => setEditSubjectDescription(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" />
+                    </div>
                     <div className="flex justify-end gap-2 pt-3">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-md text-sm hover:bg-slate-700 transition cursor-pointer">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-500 transition cursor-pointer">Save Changes</button>
