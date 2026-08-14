@@ -60,10 +60,19 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:3000";
-        var allowedOrigins = frontendUrl.Split(';').Select(url => url.Trim()).ToArray();
+        var envFrontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
 
-        policy.WithOrigins(allowedOrigins)
+        var allowedOrigins = new List<string> {
+            "http://localhost:3000",
+            "https://frontend-sigma-lemon-58.vercel.app"
+        };
+
+        if (!string.IsNullOrEmpty(envFrontendUrl))
+        {
+            allowedOrigins.AddRange(envFrontendUrl.Split(';').Select(url => url.Trim()));
+        }
+
+        policy.WithOrigins(allowedOrigins.Distinct().ToArray())
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -82,6 +91,7 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+app.UseRouting();
 app.UseCors("AllowFrontend");
 app.UseCookiePolicy();
 
