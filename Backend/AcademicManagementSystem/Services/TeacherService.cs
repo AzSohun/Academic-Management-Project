@@ -143,7 +143,7 @@ namespace AcademicManagementSystem.Services
                     Marks = a.Marks,
                     DueDate = a.DueDate,
                     IsDraft = a.IsDraft,
-                    ClassName = a.ClassDetails != null ? a.ClassDetails.ClassName : string.Empty,
+                    ClassName = a.ClassDetails != null ? (string.IsNullOrWhiteSpace(a.ClassDetails.Section) ? a.ClassDetails.ClassName : $"{a.ClassDetails.ClassName} ({a.ClassDetails.Section})") : string.Empty,
                     SubjectName = a.Subject != null ? a.Subject.SubjectName : string.Empty
                 })
                 .ToListAsync();
@@ -183,7 +183,7 @@ namespace AcademicManagementSystem.Services
             var assignment = new Assignment
             {
                 Title = title,
-                Description = dto.Description?.Trim(),
+                Description = dto.Description?.Trim()!,
                 Marks = dto.Marks,
                 DueDate = dto.DueDate,
                 ClassDetailsId = dto.ClassDetailsId,
@@ -199,7 +199,7 @@ namespace AcademicManagementSystem.Services
             {
                 Id = assignment.Id,
                 Title = assignment.Title,
-                Description = assignment.Description,
+                Description = assignment.Description!,
                 Marks = assignment.Marks,
                 DueDate = assignment.DueDate,
                 IsDraft = assignment.IsDraft,
