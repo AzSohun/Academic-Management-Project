@@ -100,6 +100,7 @@ namespace AcademicManagementSystem.Services
                 {
                     Id = c.Id,
                     ClassName = c.ClassName,
+                    Section = c.Section,
                     RoomNumber = c.RoomNumber
                 })
                 .ToListAsync();
@@ -302,16 +303,17 @@ namespace AcademicManagementSystem.Services
         public async Task<ClassDetails> CreateClassAsync(CreateClassDto dto)
         {
             var isClassExist = await _context.ClassDetails.FirstOrDefaultAsync(c =>
-                c.ClassName == dto.ClassName && c.RoomNumber == dto.RoomNumber);
+                c.ClassName == dto.ClassName && c.Section == dto.Section && c.RoomNumber == dto.RoomNumber);
 
             if (isClassExist != null)
             {
-                throw new Exception("Class with the same name or room number already exists.");
+                throw new Exception("Class with the same name, section and room number already exists.");
             }
 
             var newClass = new ClassDetails
             {
                 ClassName = dto.ClassName,
+                Section = dto.Section,
                 RoomNumber = dto.RoomNumber,
             };
 
@@ -327,6 +329,7 @@ namespace AcademicManagementSystem.Services
             if (existingClass == null) return null;
 
             existingClass.ClassName = dto.ClassName;
+            existingClass.Section = dto.Section;
             existingClass.RoomNumber = dto.RoomNumber;
 
             await _context.SaveChangesAsync();
