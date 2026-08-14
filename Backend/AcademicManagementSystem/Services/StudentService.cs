@@ -56,11 +56,11 @@ namespace AcademicManagementSystem.Services
 
             if (student == null || student.User == null) return false;
 
-            student.User.FirstName = dto.FirstName;
-            student.User.LastName = dto.LastName;
+            student.User.FirstName = dto.FirstName.Trim();
+            student.User.LastName = dto.LastName.Trim();
             student.DateOfBirth = dto.DateOfBirth;
-            student.Address = dto.Address;
-            student.ParentContact = dto.ParentContact;
+            student.Address = dto.Address?.Trim() ?? string.Empty;
+            student.ParentContact = dto.ParentContact?.Trim() ?? string.Empty;
             student.UpdatedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -112,7 +112,8 @@ namespace AcademicManagementSystem.Services
             return new MyEnrolledClassDto
             {
                 Id = classDetails.Id,
-                ClassName = classDetails.ClassName,
+                // Ekhane Section add kora holo
+                ClassName = string.IsNullOrWhiteSpace(classDetails.Section) ? classDetails.ClassName : $"{classDetails.ClassName} ({classDetails.Section})",
                 RoomNumber = classDetails.RoomNumber ?? string.Empty,
                 Classmates = classmates,
                 Subjects = subjects
@@ -134,11 +135,11 @@ namespace AcademicManagementSystem.Services
                 {
                     Id = a.Id,
                     Title = a.Title,
-                    Description = a.Description,
+                    Description = a.Description ?? string.Empty,
                     Marks = a.Marks,
                     DueDate = a.DueDate,
                     IsDraft = a.IsDraft,
-                    ClassName = a.ClassDetails != null ? a.ClassDetails.ClassName : string.Empty,
+                    ClassName = a.ClassDetails != null ? (string.IsNullOrWhiteSpace(a.ClassDetails.Section) ? a.ClassDetails.ClassName : $"{a.ClassDetails.ClassName} ({a.ClassDetails.Section})") : string.Empty,
                     SubjectName = a.Subject != null ? a.Subject.SubjectName : string.Empty,
                     TeacherName = a.Teacher != null && a.Teacher.User != null ? $"{a.Teacher.User.FirstName} {a.Teacher.User.LastName}" : string.Empty
                 }).ToListAsync();
@@ -158,11 +159,11 @@ namespace AcademicManagementSystem.Services
             {
                 Id = assignment.Id,
                 Title = assignment.Title,
-                Description = assignment.Description,
+                Description = assignment.Description ?? string.Empty,
                 Marks = assignment.Marks,
                 DueDate = assignment.DueDate,
                 SubjectName = assignment.Subject?.SubjectName ?? string.Empty,
-                ClassName = assignment.ClassDetails?.ClassName ?? string.Empty,
+                ClassName = assignment.ClassDetails != null ? (string.IsNullOrWhiteSpace(assignment.ClassDetails.Section) ? assignment.ClassDetails.ClassName : $"{assignment.ClassDetails.ClassName} ({assignment.ClassDetails.Section})") : string.Empty,
                 TeacherName = assignment.Teacher != null && assignment.Teacher.User != null ? $"{assignment.Teacher.User.FirstName} {assignment.Teacher.User.LastName}" : string.Empty
             };
         }
@@ -173,7 +174,20 @@ namespace AcademicManagementSystem.Services
             if (student == null) throw new Exception("Student Not Found");
 
             var assignment = await _context.Assignments.FindAsync(dto.AssignmentId);
-            if (assignment == null) throw new Exception("Assignment Not Found");
+            if (assignment == null || assignment.IsDraft) throw new Exception("Assignment Not Found");
+
+            if (assignment.ClassDetailsId != student.ClassDetailsId)
+            {
+                throw new Exception("You are not authorized to submit an assignment for a class you are not enrolled in.");
+            }
+
+            var existingSubmission = await _context.Submissions
+                .FirstOrDefaultAsync(s => s.AssignmentId == dto.AssignmentId && s.StudentId == student.Id);
+
+            if (existingSubmission != null)
+            {
+                throw new Exception("You have already submitted this assignment. You can update your existing submission instead.");
+            }
 
             if (DateOnly.FromDateTime(DateTime.UtcNow) > assignment.DueDate)
             {
@@ -183,7 +197,7 @@ namespace AcademicManagementSystem.Services
             var submission = new Submission
             {
                 AssignmentId = dto.AssignmentId,
-                FilePath = dto.FilePath ?? string.Empty,
+                FilePath = dto.FilePath?.Trim() ?? string.Empty,
                 StudentId = student.Id,
                 SubmissionDate = DateTime.UtcNow,
                 Status = SubmissionStatus.Pending,
@@ -196,7 +210,7 @@ namespace AcademicManagementSystem.Services
             {
                 Id = submission.Id,
                 AssignmentTitle = assignment.Title,
-                FilePath = dto.FilePath ?? string.Empty,
+                FilePath = submission.FilePath,
                 SubmissionDate = submission.SubmissionDate,
                 Status = submission.Status.ToString()
             };
@@ -218,7 +232,7 @@ namespace AcademicManagementSystem.Services
                 throw new Exception("The deadline has passed. You cannot update your submission anymore.");
             }
 
-            submission.FilePath = newFilePath ?? string.Empty;
+            submission.FilePath = newFilePath?.Trim() ?? string.Empty;
             submission.SubmissionDate = DateTime.UtcNow;
             submission.UpdatedDate = DateTime.UtcNow;
 
@@ -231,7 +245,7 @@ namespace AcademicManagementSystem.Services
             var student = await GetStudentByUserIdAsync(studentId);
             if (student == null) return Enumerable.Empty<SubmissionResponseDto>();
 
-            var submission = await _context.Submissions
+            var submissions = await _context.Submissions
                 .Where(s => s.StudentId == student.Id)
                 .Include(s => s.Assignment)
                     .ThenInclude(a => a!.Subject)
@@ -241,13 +255,13 @@ namespace AcademicManagementSystem.Services
                     FilePath = s.FilePath,
                     SubmissionDate = s.SubmissionDate,
                     MarkAssigned = s.MarkAssigned,
-                    TeacherFeedback = s.TeacherFeedback,
+                    TeacherFeedback = s.TeacherFeedback ?? string.Empty,
                     Status = s.Status.ToString(),
                     AssignmentTitle = s.Assignment != null ? s.Assignment.Title : string.Empty,
                     SubjectName = s.Assignment != null && s.Assignment.Subject != null ? s.Assignment.Subject.SubjectName : string.Empty
                 }).ToListAsync();
 
-            return submission;
+            return submissions;
         }
     }
 }
