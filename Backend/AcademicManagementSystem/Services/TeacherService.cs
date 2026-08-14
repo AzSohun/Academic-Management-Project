@@ -26,8 +26,6 @@ namespace AcademicManagementSystem.Services
                 .FirstOrDefaultAsync(t => t.UserId == userId);
         }
 
-
-
         public async Task<TeacherProfileResponseDto?> GetMyProfileAsync(Guid userId)
         {
             var teacher = await _context.Teachers
@@ -60,20 +58,19 @@ namespace AcademicManagementSystem.Services
 
             if (teacher == null || teacher.User == null) return false;
 
-            teacher.User.FirstName = dto.FirstName;
-            teacher.User.LastName = dto.LastName;
+            teacher.User.FirstName = dto.FirstName.Trim();
+            teacher.User.LastName = dto.LastName.Trim();
 
-            teacher.PhoneNumber = dto.PhoneNumber;
-            teacher.Address = dto.Address;
+            teacher.PhoneNumber = dto.PhoneNumber?.Trim()!;
+            teacher.Address = dto.Address?.Trim()!;
             teacher.DateOfBirth = dto.DateOfBirth;
-            teacher.Qualification = dto.Qualification;
-            teacher.Experience = dto.Experience;
+            teacher.Qualification = dto.Qualification?.Trim()!;
+            teacher.Experience = dto.Experience?.Trim()!;
             teacher.UpdatedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return true;
         }
-
 
         public async Task<IEnumerable<TeacherClassDetailsDto>> GetMyClassesAsync(Guid userId)
         {
@@ -161,10 +158,32 @@ namespace AcademicManagementSystem.Services
                 throw new Exception("Teacher record not found!");
             }
 
+            if (!teacher.Classes.Any(c => c.Id == dto.ClassDetailsId))
+            {
+                throw new Exception("You are not authorized to create an assignment for this class as you are not assigned to it.");
+            }
+
+            if (!teacher.Subjects.Any(s => s.Id == dto.SubjectId))
+            {
+                throw new Exception("You are not authorized to create an assignment for this subject as it is not assigned to you.");
+            }
+
+            var title = dto.Title.Trim();
+            var duplicateAssignment = await _context.Assignments.FirstOrDefaultAsync(a =>
+                a.TeacherId == teacher.Id &&
+                a.ClassDetailsId == dto.ClassDetailsId &&
+                a.SubjectId == dto.SubjectId &&
+                a.Title.ToLower() == title.ToLower());
+
+            if (duplicateAssignment != null)
+            {
+                throw new Exception("An assignment with this exact title already exists for this class and subject.");
+            }
+
             var assignment = new Assignment
             {
-                Title = dto.Title,
-                Description = dto.Description,
+                Title = title,
+                Description = dto.Description?.Trim(),
                 Marks = dto.Marks,
                 DueDate = dto.DueDate,
                 ClassDetailsId = dto.ClassDetailsId,
@@ -200,8 +219,31 @@ namespace AcademicManagementSystem.Services
                 return false;
             }
 
-            assignment.Title = dto.Title;
-            assignment.Description = dto.Description;
+            if (assignment.ClassDetailsId != dto.ClassDetailsId && !teacher.Classes.Any(c => c.Id == dto.ClassDetailsId))
+            {
+                throw new Exception("You cannot reassign this to a class you do not teach.");
+            }
+
+            if (assignment.SubjectId != dto.SubjectId && !teacher.Subjects.Any(s => s.Id == dto.SubjectId))
+            {
+                throw new Exception("You cannot reassign this to a subject you do not teach.");
+            }
+
+            var title = dto.Title.Trim();
+            var duplicateAssignment = await _context.Assignments.FirstOrDefaultAsync(a =>
+                a.Id != assignmentId &&
+                a.TeacherId == teacher.Id &&
+                a.ClassDetailsId == dto.ClassDetailsId &&
+                a.SubjectId == dto.SubjectId &&
+                a.Title.ToLower() == title.ToLower());
+
+            if (duplicateAssignment != null)
+            {
+                throw new Exception("Another assignment with this exact title already exists for this class and subject.");
+            }
+
+            assignment.Title = title;
+            assignment.Description = dto.Description?.Trim()!;
             assignment.Marks = dto.Marks;
             assignment.DueDate = dto.DueDate;
             assignment.IsDraft = dto.IsDraft;
@@ -323,13 +365,18 @@ namespace AcademicManagementSystem.Services
                 return false;
             }
 
+            if (dto.MarksAssigned < 0)
+            {
+                throw new Exception("Marks assigned cannot be negative.");
+            }
+
             if (dto.MarksAssigned > submission.Assignment.Marks)
             {
                 throw new Exception($"Marks assigned ({dto.MarksAssigned}) cannot be greater than the maximum assignment marks ({submission.Assignment.Marks}).");
             }
 
             submission.MarkAssigned = dto.MarksAssigned;
-            submission.TeacherFeedback = dto.Feedback;
+            submission.TeacherFeedback = dto.Feedback?.Trim()!;
             submission.Status = dto.Status;
             submission.UpdatedDate = DateTime.UtcNow;
 
